@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f14">
+<title>Lars — Ouder Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0f0f14;--surface:#181820;--surface2:#22222e;--border:#2e2e3e;--accent:#7c6ff7;--accent2:#5bc4a4;--warn:#f0a05a;--danger:#e05b5b;--text:#e8e8f0;--muted:#8888aa;--r:14px;--sb:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;-webkit-font-smoothing:antialiased}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:100}
+.hdr-top{display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:17px;font-weight:600}.logo span{color:var(--accent)}
+.who-badge{font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;background:rgba(124,111,247,.15);color:var(--accent);border:1px solid var(--accent)}
+.main{padding:14px 14px calc(30px + var(--sb))}
+.stitle{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:18px 0 9px}
+.stitle:first-child{margin-top:0}
+
+/* SUMMARY CARDS */
+.summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.sum-num{font-size:26px;font-weight:600;margin-bottom:2px}
+.sum-num.goed{color:var(--accent2)}
+.sum-num.twijfel{color:var(--warn)}
+.sum-num.hulp{color:var(--danger)}
+.sum-label{font-size:11px;color:var(--muted)}
+
+/* TOETS CARDS */
+.toets-cards{display:flex;flex-direction:column;gap:10px}
+.toets-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.toets-hdr{padding:12px 14px;border-bottom:1px solid var(--border)}
+.toets-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.toets-naam{font-size:14px;font-weight:600}
+.toets-vak{font-size:12px;color:var(--muted)}
+.deadline{font-family:'DM Mono',monospace;font-size:11px;padding:2px 8px;border-radius:5px}
+.deadline.urgent{background:#3a1818;color:var(--danger)}
+.deadline.soon{background:#2e2012;color:var(--warn)}
+.deadline.ok{background:#122e26;color:var(--accent2)}
+.deadline.past{background:#2a2a2a;color:var(--muted)}
+
+/* PROGRESS BAR */
+.prog-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.prog-wrap{flex:1;background:var(--surface2);border-radius:4px;height:6px;overflow:hidden}
+.prog-bar{height:6px;border-radius:4px;transition:width .4s}
+.prog-label{font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* SESSIE ROWS */
+.sessie-list{padding:8px 14px 12px;display:flex;flex-direction:column;gap:4px}
+.sessie-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--surface2)}
+.sess-status{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.sess-status.open{background:var(--surface);border:1.5px solid var(--border);color:var(--muted)}
+.sess-status.goed{background:rgba(91,196,164,.15);border:1.5px solid var(--accent2)}
+.sess-status.twijfel{background:rgba(240,160,90,.15);border:1.5px solid var(--warn)}
+.sess-status.hulp{background:rgba(224,91,91,.15);border:1.5px solid var(--danger)}
+.sess-info{flex:1;min-width:0}
+.sess-datum{font-size:11px;color:var(--muted);margin-bottom:1px}
+.sess-inhoud{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hulp-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(224,91,91,.15);color:var(--danger);border:1px solid var(--danger);white-space:nowrap;flex-shrink:0}
+.twijfel-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:rgba(240,160,90,.15);color:var(--warn);border:1px solid var(--warn);white-space:nowrap;flex-shrink:0}
+
+/* HULP NEEDED SECTION */
+.hulp-section{background:rgba(224,91,91,.07);border:1px solid var(--danger);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.hulp-title{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:8px}
+.hulp-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(224,91,91,.2)}
+.hulp-item:last-child{border:none;padding-bottom:0}
+.hulp-item-vak{font-size:11px;color:var(--muted);margin-bottom:1px}
+.hulp-item-stof{font-size:13px;font-weight:500}
+
+/* SYNC */
+.sync{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:6px}
+.sync.ok{color:var(--accent2)}.sync.err{color:var(--danger)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px}
+.empty .ei{font-size:48px;margin-bottom:12px}
+.empty .et{font-size:16px;font-weight:600;margin-bottom:6px}
+.empty .es{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* REFRESH */
+.refresh-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--muted);font-size:13px;cursor:pointer;width:100%;font-family:inherit;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">Lars <span>Planner</span></div>
+    <div class="who-badge" id="who-badge">laden…</div>
+  </div>
+  <div class="sync" id="sync-status"><div class="dot"></div><span>laden…</span></div>
+</div>
+
+<div class="main" id="main">
+  <div class="empty"><div class="ei">⏳</div><div class="et">Laden…</div></div>
+</div>
+
+<script>
+const SB_URL='https://hrxtbbcjfzorbdlyxtut.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyeHRiYmNqZnpvcmJkbHl4dHV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDc0ODYsImV4cCI6MjA5MzgyMzQ4Nn0.cRJGJbcfC9UzWC84TWogvgFtsaQIrvy4CbeapjyDlIc';
+
+async function sb(path){
+  const r=await fetch(`${SB_URL}/rest/v1/${path}`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+
+const DAG=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+const MND=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+function fmtShort(ds){const s=String(ds).slice(0,10);const p=s.split('-');const d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));return`${DAG[d.getDay()]} ${d.getDate()} ${MND[d.getMonth()]}`}
+function daysUntil(ds){const t=new Date();t.setHours(0,0,0,0);const s=String(ds).slice(0,10);const p=s.split('-');const d=new Date(Number(p[0]),Number(p[1])-1,Number(p[2]));return Math.round((d-t)/86400000)}
+function urgency(ds){const d=daysUntil(ds);if(d<0)return'past';if(d<=2)return'urgent';if(d<=7)return'soon';return'ok'}
+function urgencyLabel(ds){const d=daysUntil(ds);if(d<0)return'Verlopen';if(d===0)return'Vandaag!';if(d===1)return'Morgen';return`nog ${d}d`}
+
+// Get wie from URL
+const wie = new URLSearchParams(window.location.search).get('wie') || 'joost';
+const wieLabel = wie==='joost' ? '👨 Joost' : wie==='karin' ? '👩 Karin' : '👨‍👩‍👦 Beiden';
+document.getElementById('who-badge').textContent = wieLabel;
+
+async function load(){
+  try{
+    const [vakken, toetsen, sessies] = await Promise.all([
+      sb('lp_vakken?order=naam'),
+      sb('lp_toetsen?order=datum'),
+      sb('lp_sessies?order=datum'),
+    ]);
+
+    // Filter toetsen for this begeleider
+    const myToetsen = toetsen.filter(t =>
+      t.begeleider === wie || t.begeleider === 'beiden' || !t.begeleider
+    );
+
+    document.getElementById('sync-status').className='sync ok';
+    document.getElementById('sync-status').innerHTML='<div class="dot"></div><span>bijgewerkt '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</span>';
+
+    render(vakken, myToetsen, sessies);
+  }catch(e){
+    document.getElementById('sync-status').className='sync err';
+    document.getElementById('sync-status').innerHTML='<div class="dot"></div><span>fout: '+e.message+'</span>';
+  }
+}
+
+function render(vakken, toetsen, allSessies){
+  const main = document.getElementById('main');
+
+  if(!toetsen.length){
+    main.innerHTML=`<div class="empty"><div class="ei">📚</div><div class="et">Geen toetsen</div><div class="es">Er zijn nog geen toetsen gekoppeld aan ${wieLabel}</div></div>`;
+    return;
+  }
+
+  // Gather all sessies for my toetsen
+  const myToetsIds = new Set(toetsen.map(t=>t.id));
+  const mySessies = allSessies.filter(s=>myToetsIds.has(s.toets_id));
+
+  // Summary counts
+  const gedaan = mySessies.filter(s=>s.done);
+  const goedCount = gedaan.filter(s=>s.begrip==='goed').length;
+  const twijfelCount = gedaan.filter(s=>s.begrip==='twijfel').length;
+  const hulpCount = gedaan.filter(s=>s.begrip==='hulp').length;
+
+  // Hulp needed items
+  const hulpSessies = mySessies.filter(s=>s.begrip==='hulp');
+  const twijfelSessies = mySessies.filter(s=>s.begrip==='twijfel');
+
+  let html = '';
+
+  // Summary
+  html += `<div class="stitle">Samenvatting</div>
+  <div class="summary">
+    <div class="sum-card"><div class="sum-num goed">${goedCount}</div><div class="sum-label">😊 Goed begrepen</div></div>
+    <div class="sum-card"><div class="sum-num twijfel">${twijfelCount}</div><div class="sum-label">😐 Twijfelt nog</div></div>
+    <div class="sum-card"><div class="sum-num hulp">${hulpCount}</div><div class="sum-label">😕 Hulp nodig</div></div>
+  </div>`;
+
+  // Hulp needed alert
+  if(hulpSessies.length > 0){
+    html += `<div class="hulp-section">
+      <div class="hulp-title">⚠️ Lars heeft hulp nodig bij:</div>
+      ${hulpSessies.map(s=>{
+        const t=toetsen.find(x=>x.id===s.toets_id);
+        const v=vakken.find(x=>x.id===t?.vak_id);
+        return`<div class="hulp-item">
+          <span style="font-size:20px">😕</span>
+          <div>
+            <div class="hulp-item-vak">${v?.emoji||''} ${v?.naam||''} · ${t?.naam||''}</div>
+            <div class="hulp-item-stof">${s.inhoud}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Twijfel alert
+  if(twijfelSessies.length > 0){
+    html += `<div class="hulp-section" style="background:rgba(240,160,90,.07);border-color:var(--warn)">
+      <div class="hulp-title" style="color:var(--warn)">💬 Lars twijfelt nog over:</div>
+      ${twijfelSessies.map(s=>{
+        const t=toetsen.find(x=>x.id===s.toets_id);
+        const v=vakken.find(x=>x.id===t?.vak_id);
+        return`<div class="hulp-item" style="border-color:rgba(240,160,90,.2)">
+          <span style="font-size:20px">😐</span>
+          <div>
+            <div class="hulp-item-vak">${v?.emoji||''} ${v?.naam||''} · ${t?.naam||''}</div>
+            <div class="hulp-item-stof">${s.inhoud}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Per toets
+  html += `<div class="stitle">Toetsen</div><div class="toets-cards">`;
+
+  // Sort: upcoming first
+  const sorted = [...toetsen].sort((a,b)=>daysUntil(a.datum)-daysUntil(b.datum));
+
+  sorted.forEach(t=>{
+    const vak = vakken.find(v=>v.id===t.vak_id);
+    const tSess = allSessies.filter(s=>s.toets_id===t.id);
+    const done = tSess.filter(s=>s.done).length;
+    const total = tSess.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const u = urgency(t.datum);
+
+    // Progress bar color based on begrip
+    const hasHulp = tSess.some(s=>s.begrip==='hulp');
+    const hasTwijfel = tSess.some(s=>s.begrip==='twijfel');
+    const barColor = hasHulp ? 'var(--danger)' : hasTwijfel ? 'var(--warn)' : 'var(--accent2)';
+
+    html += `<div class="toets-card">
+      <div class="toets-hdr">
+        <div class="toets-top">
+          <div class="toets-naam">${vak?.emoji||''} ${t.naam}</div>
+          <span class="deadline ${u}">${urgencyLabel(t.datum)}</span>
+        </div>
+        <div class="toets-vak">${vak?.naam||''} · 📅 ${fmtShort(t.datum)}</div>
+        <div class="prog-row">
+          <div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${barColor}"></div></div>
+          <div class="prog-label">${done}/${total} sessies</div>
+        </div>
+      </div>
+      <div class="sessie-list">
+        ${tSess.map(s=>{
+          const statusIcon = s.begrip==='goed'?'😊':s.begrip==='twijfel'?'😐':s.begrip==='hulp'?'😕':s.done?'✓':'';
+          const statusClass = s.begrip||( s.done?'goed':'open');
+          const tag = s.begrip==='hulp'?'<span class="hulp-tag">Hulp nodig</span>':s.begrip==='twijfel'?'<span class="twijfel-tag">Twijfelt</span>':'';
+          return`<div class="sessie-row">
+            <div class="sess-status ${statusClass}">${statusIcon}</div>
+            <div class="sess-info">
+              <div class="sess-datum">${fmtShort(s.datum)}</div>
+              <div class="sess-inhoud">${s.inhoud}</div>
+            </div>
+            ${tag}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+  html += `<button class="refresh-btn" onclick="load()">🔄 Vernieuwen</button>`;
+
+  main.innerHTML = html;
+}
+
+load();
+// Auto-refresh every 5 minutes
+setInterval(load, 5*60*1000);
+</script>
+</body>
+</html>
