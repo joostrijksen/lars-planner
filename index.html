@@ -171,6 +171,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .empty .ei{font-size:44px;margin-bottom:10px}
 .empty .et{font-size:15px;font-weight:600;margin-bottom:5px}
 .empty .es{font-size:13px;color:var(--muted);line-height:1.5}
+/* BEGRIP POPUP */
+.begrip-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px}
+.begrip-box{background:var(--surface);border-radius:20px;padding:24px 20px;width:100%;max-width:340px;text-align:center}
+.begrip-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.begrip-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.4}
+.begrip-btns{display:flex;flex-direction:column;gap:8px}
+.begrip-btn{padding:13px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;text-align:left;display:flex;align-items:center;gap:10px}
+.begrip-btn:hover{border-color:var(--accent)}
+.begrip-btn.goed{border-color:#5bc4a4;background:rgba(91,196,164,.1)}
+.begrip-btn.twijfel{border-color:#f0a05a;background:rgba(240,160,90,.1)}
+.begrip-btn.hulp{border-color:#e05b5b;background:rgba(224,91,91,.1)}
+.begrip-icon{font-size:22px}
 /* DELETE BTN */
 .del-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
 .del-btn:hover{color:var(--danger)}
@@ -233,6 +245,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="field">
     <label>Toetsdatum</label>
     <input type="date" id="f-datum" onchange="resetPlan()">
+  </div>
+  <div class="field">
+    <label>Begeleider</label>
+    <select id="f-begeleider">
+      <option value="beiden">👨‍👩‍👦 Joost &amp; Karin</option>
+      <option value="joost">👨 Joost</option>
+      <option value="karin">👩 Karin</option>
+    </select>
   </div>
   <div class="div"></div>
   <div class="field"><label>Wat ga je leren?</label></div>
@@ -353,6 +373,7 @@ const DB = {
   addSessies:   (arr)=>sb('POST',   'lp_sessies', arr),
   toggleSessie: (id,done)=>sb('PATCH',`lp_sessies?id=eq.${id}`,{done}),
   deleteSessies:(tid)=>sb('DELETE', `lp_sessies?toets_id=eq.${tid}`),
+  setBegrip:(id,begrip)=>sb('PATCH',`lp_sessies?id=eq.${id}`,{begrip}),
 };
 
 // ══ STATE ══
@@ -467,7 +488,7 @@ function renderWeek(){
             <div class="task-meta">${t.naam} · ${v?.naam||''} · ⏱ ${sv.tijd_min} min</div>
           </div>
           <span class="badge">${idx}/${tot}</span>
-          <div class="check${sv.done?' done':''}" onclick="toggleSessie('${sv.id}',${!sv.done})">✓</div>
+          <div class="check${sv.done?' done':''}" onclick="toggleSessie('${sv.id}',${!sv.done})" style="${sv.begrip==='hulp'?'background:#e05b5b;border-color:#e05b5b':sv.begrip==='twijfel'?'background:#f0a05a;border-color:#f0a05a':''}">${sv.begrip==='hulp'?'😕':sv.begrip==='twijfel'?'😐':'✓'}</div>
         </div>`;
       }).join('')}</div>`;
     }
@@ -483,10 +504,46 @@ function renderWeek(){
 async function toggleSessie(id,done){
   const s=sessies.find(x=>x.id===id);
   if(!s)return;
-  s.done=done;
+  if(done){
+    // Show begrip popup
+    showBegripPopup(id);
+  } else {
+    s.done=false;s.begrip=null;
+    renderWeek();
+    try{await DB.toggleSessie(id,false);await DB.setBegrip(id,null);setSyncStatus('ok','gesynchroniseerd');}
+    catch(e){s.done=true;renderWeek();toast('Sync fout: '+e.message);}
+  }
+}
+
+function showBegripPopup(sessieId){
+  const existing=document.getElementById('begrip-overlay');
+  if(existing)existing.remove();
+  const div=document.createElement('div');
+  div.className='begrip-overlay';
+  div.id='begrip-overlay';
+  div.innerHTML=`<div class="begrip-box">
+    <div class="begrip-title">Sessie afgerond! 🎉</div>
+    <div class="begrip-sub">Hoe goed begrijp je de stof?</div>
+    <div class="begrip-btns">
+      <button class="begrip-btn goed" onclick="saveBegrip('${sessieId}','goed')"><span class="begrip-icon">😊</span><div><div style="font-weight:600">Goed begrepen</div><div style="font-size:12px;color:var(--muted)">Ik snap het prima</div></div></button>
+      <button class="begrip-btn twijfel" onclick="saveBegrip('${sessieId}','twijfel')"><span class="begrip-icon">😐</span><div><div style="font-weight:600">Een beetje</div><div style="font-size:12px;color:var(--muted)">Twijfel nog over sommige dingen</div></div></button>
+      <button class="begrip-btn hulp" onclick="saveBegrip('${sessieId}','hulp')"><span class="begrip-icon">😕</span><div><div style="font-weight:600">Hulp nodig</div><div style="font-size:12px;color:var(--muted)">Ik snap het nog niet goed</div></div></button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+async function saveBegrip(sessieId, begrip){
+  document.getElementById('begrip-overlay')?.remove();
+  const s=sessies.find(x=>x.id===sessieId);
+  if(!s)return;
+  s.done=true;s.begrip=begrip;
   renderWeek();
-  try{await DB.toggleSessie(id,done);setSyncStatus('ok','gesynchroniseerd');}
-  catch(e){s.done=!done;renderWeek();toast('Sync fout: '+e.message);}
+  try{
+    await DB.toggleSessie(sessieId,true);
+    await DB.setBegrip(sessieId,begrip);
+    setSyncStatus('ok','gesynchroniseerd');
+  }catch(e){toast('Sync fout: '+e.message);}
 }
 
 // ══ VAKKEN VIEW ══
@@ -563,6 +620,7 @@ function resetModal(){
   pendingPlan=null;pendingChapters=[];matSlots=[];matSlotCount=0;
   document.getElementById('f-vak').value=preVakId||'';
   document.getElementById('f-naam').value='';
+  document.getElementById('f-begeleider').value='beiden';
   document.getElementById('f-datum').value='';
   document.getElementById('ai-load').classList.remove('on');
   document.getElementById('plan-box').classList.remove('on');
@@ -815,7 +873,7 @@ async function saveTaak(){
   document.getElementById('save-btn').disabled=true;
   document.getElementById('save-btn').textContent='Opslaan…';
   try{
-    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum:datum});
+    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum,begeleider:document.getElementById('f-begeleider').value});
     const toets=toetsRes[0];
     const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
     const sessieRes=await DB.addSessies(sessieData);
