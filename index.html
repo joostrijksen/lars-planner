@@ -208,6 +208,43 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .verlopen-banner{background:rgba(240,160,90,.08);border:1px solid var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .verlopen-text{font-size:12px;color:var(--warn)}
 .verlopen-count{font-size:18px;font-weight:600;color:var(--warn)}
+/* OVERHORING */
+.oh-overlay{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;flex-direction:column;overflow:hidden}
+.oh-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.oh-back{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1}
+.oh-title{font-size:15px;font-weight:600;flex:1}
+.oh-progress{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.oh-prog-bar{height:3px;background:var(--surface2);flex-shrink:0}
+.oh-prog-fill{height:3px;background:var(--accent);transition:width .4s}
+.oh-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.oh-foto-zone{border:1.5px dashed var(--accent);border-radius:12px;padding:16px;text-align:center;cursor:pointer;position:relative;margin-bottom:4px}
+.oh-foto-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.oh-foto-zone .pi{font-size:28px;margin-bottom:4px}
+.oh-foto-zone .pl{font-size:13px;font-weight:500;color:var(--accent)}
+.oh-foto-zone .ps{font-size:11px;color:var(--muted);margin-top:2px}
+.oh-foto-zone.has{border-color:var(--accent2);border-style:solid}
+.oh-foto-zone.has .pl{color:var(--accent2)}
+.oh-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.oh-thumb{width:70px;height:70px;object-fit:cover;border-radius:8px;border:2px solid var(--accent2)}
+.oh-start-btn{width:100%;padding:14px;border-radius:12px;background:var(--accent);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.oh-chat{display:flex;flex-direction:column;gap:10px}
+.oh-bubble{padding:11px 14px;border-radius:14px;font-size:14px;line-height:1.5;max-width:88%}
+.oh-bubble.ai{background:var(--surface2);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
+.oh-bubble.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.oh-bubble.feedback{background:rgba(91,196,164,.1);border:1px solid var(--accent2);align-self:flex-start;border-bottom-left-radius:4px;font-size:13px}
+.oh-bubble.feedback.warn{background:rgba(240,160,90,.1);border-color:var(--warn)}
+.oh-bubble.feedback.err{background:rgba(224,91,91,.1);border-color:var(--danger)}
+.oh-input-row{position:sticky;bottom:0;background:var(--bg);padding:12px 0 0;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+.oh-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:14px;padding:11px 13px;resize:none;min-height:44px;max-height:120px;outline:none;line-height:1.4}
+.oh-input:focus{border-color:var(--accent)}
+.oh-send{width:44px;height:44px;border-radius:11px;background:var(--accent);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.oh-send:disabled{opacity:.4}
+.oh-result{background:var(--surface2);border-radius:14px;padding:16px;text-align:center}
+.oh-result-emoji{font-size:52px;margin-bottom:8px}
+.oh-result-title{font-size:17px;font-weight:600;margin-bottom:6px}
+.oh-result-sub{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.oh-result-score{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted);margin-bottom:16px}
+.oh-result-btn{width:100%;padding:13px;border-radius:11px;background:var(--accent);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
 /* DELETE BTN */
 .del-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
 .del-btn:hover{color:var(--danger)}
@@ -377,6 +414,41 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 </div>
 
+<div class="oh-overlay" id="oh-overlay" style="display:none">
+  <div class="oh-header">
+    <button class="oh-back" onclick="closeOverhoring()">✕</button>
+    <div class="oh-title" id="oh-title">Overhoring</div>
+    <div class="oh-progress" id="oh-progress"></div>
+  </div>
+  <div class="oh-prog-bar"><div class="oh-prog-fill" id="oh-prog-fill" style="width:0%"></div></div>
+  <div class="oh-body" id="oh-body">
+    <!-- foto upload fase -->
+    <div id="oh-foto-fase">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">📚 Overhoring starten</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Maak foto's van de leerstof die je wilt oefenen. De AI stelt dan gerichte vragen over jouw eigen stof.</div>
+      <div id="oh-thumbs-wrap" class="oh-thumbs"></div>
+      <div class="oh-foto-zone" id="oh-foto-zone">
+        <input type="file" accept="image/*" capture="environment" onchange="addOhFoto(event)">
+        <div class="pi">📷</div>
+        <div class="pl">Foto van leerstof</div>
+        <div class="ps">Woordenlijst, aantekeningen, samenvatting…</div>
+      </div>
+      <button class="add-btn" style="margin:8px 0" onclick="document.querySelector('#oh-foto-zone input').click()">+ Nog een foto</button>
+      <button class="oh-start-btn" id="oh-start-btn" onclick="startOhVraag()">🧪 Start overhoring</button>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Of start zonder foto — AI stelt vragen op basis van de sessieomschrijving</div>
+    </div>
+    <!-- chat fase -->
+    <div id="oh-chat-fase" style="display:none">
+      <div class="oh-chat" id="oh-chat"></div>
+    </div>
+    <!-- resultaat fase -->
+    <div id="oh-result-fase" style="display:none"></div>
+  </div>
+  <div class="oh-input-row" id="oh-input-row" style="display:none;padding:12px 16px">
+    <textarea class="oh-input" id="oh-input" placeholder="Typ je antwoord…" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendOhAntwoord()}"></textarea>
+    <button class="oh-send" id="oh-send-btn" onclick="sendOhAntwoord()">↑</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -520,6 +592,7 @@ function renderWeek(){
             <div class="task-meta">${t.naam} · ${v?.naam||''} · ⏱ ${sv.tijd_min} min</div>
           </div>
           <span class="badge">${idx}/${tot}</span>
+          <button onclick="startOverhoring('${t.id}','${sv.id}')" style="background:rgba(124,111,247,.15);border:1px solid var(--accent);border-radius:7px;color:var(--accent);font-size:11px;font-weight:600;padding:3px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit">🧪 Oefen</button>
           <div class="check${sv.done?' done':''}" onclick="toggleSessie('${sv.id}',${!sv.done})" style="${sv.begrip==='hulp'?'background:#e05b5b;border-color:#e05b5b':sv.begrip==='twijfel'?'background:#f0a05a;border-color:#f0a05a':''}">${sv.begrip==='hulp'?'😕':sv.begrip==='twijfel'?'😐':'✓'}</div>
         </div>`;
       }).join('')}</div>`;
@@ -1110,6 +1183,219 @@ async function archiveVerlopen(){
     renderWeek();
     toast(`🗑 ${verlopen.length} verlopen toets${verlopen.length>1?'en':''} verwijderd`);
   }catch(e){toast('Fout: '+e.message);}
+}
+
+// ══ OVERHORING ══
+let ohState = {
+  toetsId: null, sessieId: null, sessieInhoud: '',
+  fotos: [], vraagNr: 0, maxVragen: 7,
+  history: [], score: {goed:0, twijfel:0, fout:0}
+};
+
+function startOverhoring(toetsId, sessieId){
+  const t = toetsen.find(x=>x.id===toetsId);
+  const s = sessies.find(x=>x.id===sessieId);
+  if(!t||!s) return;
+  ohState = {
+    toetsId, sessieId,
+    sessieInhoud: s.inhoud,
+    toetsNaam: t.naam,
+    fotos: [], vraagNr: 0, maxVragen: 7,
+    history: [], score: {goed:0, twijfel:0, fout:0}
+  };
+  // Reset UI
+  document.getElementById('oh-title').textContent = t.naam;
+  document.getElementById('oh-progress').textContent = '';
+  document.getElementById('oh-prog-fill').style.width = '0%';
+  document.getElementById('oh-thumbs-wrap').innerHTML = '';
+  document.getElementById('oh-chat').innerHTML = '';
+  document.getElementById('oh-foto-fase').style.display = 'block';
+  document.getElementById('oh-chat-fase').style.display = 'none';
+  document.getElementById('oh-result-fase').style.display = 'none';
+  document.getElementById('oh-input-row').style.display = 'none';
+  document.getElementById('oh-input').value = '';
+  document.getElementById('oh-overlay').style.display = 'flex';
+}
+
+function closeOverhoring(){
+  document.getElementById('oh-overlay').style.display = 'none';
+}
+
+function addOhFoto(e){
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    ohState.fotos.push(ev.target.result);
+    const thumbs = document.getElementById('oh-thumbs-wrap');
+    const img = document.createElement('img');
+    img.src = ev.target.result;
+    img.className = 'oh-thumb';
+    thumbs.appendChild(img);
+    document.getElementById('oh-foto-zone').querySelector('.pl').textContent = `${ohState.fotos.length} foto${ohState.fotos.length>1?''s':''} geladen ✓`;
+    document.getElementById('oh-foto-zone').classList.add('has');
+    // Reset file input so same file can be added again
+    e.target.value = '';
+  };
+  r.readAsDataURL(file);
+}
+
+async function startOhVraag(){
+  document.getElementById('oh-start-btn').disabled = true;
+  document.getElementById('oh-start-btn').textContent = 'Vragen voorbereiden…';
+
+  document.getElementById('oh-foto-fase').style.display = 'none';
+  document.getElementById('oh-chat-fase').style.display = 'block';
+  document.getElementById('oh-input-row').style.display = 'flex';
+
+  // Build first message
+  const hasPhotos = ohState.fotos.length > 0;
+  const systemContext = hasPhotos
+    ? `Je bent een behulpzame leercoach die een scholier overhoor. Je hebt foto's van de leerstof gekregen. Stel ${ohState.maxVragen} vragen over deze leerstof, één tegelijk. Stel na elk antwoord kort feedback (1 zin) en dan de volgende vraag. Gebruik simpele taal voor een middelbare scholier. Begin direct met vraag 1.`
+    : `Je bent een behulpzame leercoach die een scholier overhoor over: "${ohState.sessieInhoud}" (onderdeel van toets: ${ohState.toetsNaam}). Stel ${ohState.maxVragen} gerichte vragen over deze stof, één tegelijk. Stel na elk antwoord kort feedback (1 zin) en dan de volgende vraag. Gebruik simpele taal. Begin direct met vraag 1.`;
+
+  const userContent = hasPhotos
+    ? [...ohState.fotos.map(f => imgBlock(f)), {type:'text', text:`Dit is mijn leerstof. Stel mij hier ${ohState.maxVragen} vragen over, één voor één. Begin met vraag 1.`}]
+    : `Start de overhoring. Stel vraag 1.`;
+
+  ohState.history = [{role:'user', content: userContent}];
+
+  addOhLoading();
+  try{
+    const raw = await claudeAPI([
+      {role:'user', content:`[INSTRUCTIE VOOR AI]: ${systemContext}`},
+      ...ohState.history
+    ], 600);
+    removeOhLoading();
+    ohState.history.push({role:'assistant', content: raw});
+    ohState.vraagNr = 1;
+    addOhBubble('ai', raw);
+    updateOhProgress();
+  } catch(e){
+    removeOhLoading();
+    addOhBubble('ai', '❌ Kon geen vragen laden. Probeer opnieuw.');
+  }
+  document.getElementById('oh-start-btn').disabled = false;
+}
+
+async function sendOhAntwoord(){
+  const input = document.getElementById('oh-input');
+  const antwoord = input.value.trim();
+  if(!antwoord) return;
+  input.value = '';
+  input.style.height = 'auto';
+
+  addOhBubble('user', antwoord);
+  ohState.history.push({role:'user', content: antwoord});
+
+  // Check if done
+  if(ohState.vraagNr >= ohState.maxVragen){
+    await finishOverhoring();
+    return;
+  }
+
+  ohState.vraagNr++;
+  updateOhProgress();
+  addOhLoading();
+
+  try{
+    const nextPrompt = ohState.vraagNr === ohState.maxVragen
+      ? `[Dit is het laatste antwoord. Geef feedback op dit antwoord en sluit dan af met een korte samenvatting van hoe de leerling het heeft gedaan. Geen nieuwe vraag meer.]`
+      : `[Geef korte feedback op dit antwoord (goed/bijna/fout + correctie indien nodig, max 2 zinnen) en stel dan vraag ${ohState.vraagNr} van ${ohState.maxVragen}.]`;
+
+    const messages = [
+      {role:'user', content: ohState.history[0].content},
+      ...ohState.history.slice(1),
+      {role:'user', content: nextPrompt}
+    ];
+
+    const raw = await claudeAPI(messages, 400);
+    removeOhLoading();
+    ohState.history.push({role:'assistant', content: raw});
+
+    // Detect feedback type from response
+    const lc = raw.toLowerCase();
+    const isGoed = lc.includes('goed') || lc.includes('correct') || lc.includes('juist') || lc.includes('prima') || lc.includes('precies');
+    const isFout = lc.includes('niet correct') || lc.includes('onjuist') || lc.includes('fout') || lc.includes('klopt niet');
+    const feedbackClass = isFout ? 'err' : isGoed ? '' : 'warn';
+    if(ohState.vraagNr <= ohState.maxVragen) {
+      addOhBubble('feedback', raw, feedbackClass);
+      if(isGoed) ohState.score.goed++;
+      else if(isFout) ohState.score.fout++;
+      else ohState.score.twijfel++;
+    }
+
+    if(ohState.vraagNr >= ohState.maxVragen){
+      setTimeout(finishOverhoring, 800);
+    }
+  } catch(e){
+    removeOhLoading();
+    addOhBubble('ai', '❌ Fout. Probeer opnieuw.');
+  }
+}
+
+async function finishOverhoring(){
+  document.getElementById('oh-input-row').style.display = 'none';
+  const {goed, twijfel, fout} = ohState.score;
+  const total = goed + twijfel + fout;
+  const pct = total ? Math.round(goed/total*100) : 0;
+
+  let begrip, emoji, titel, sub;
+  if(pct >= 70){ begrip='goed'; emoji='😊'; titel='Goed gedaan!'; sub=`Je had ${goed} van de ${total} vragen goed. Je snapt het prima!`; }
+  else if(pct >= 40){ begrip='twijfel'; emoji='😐'; titel='Bijna!'; sub=`Je had ${goed} van de ${total} vragen goed. Nog een keer herhalen helpt.`; }
+  else{ begrip='hulp'; emoji='😕'; titel='Nog wat oefenen'; sub=`Je had ${goed} van de ${total} vragen goed. Vraag Joost of Karin om hulp.`; }
+
+  document.getElementById('oh-chat-fase').style.display = 'none';
+  document.getElementById('oh-result-fase').style.display = 'block';
+  document.getElementById('oh-result-fase').innerHTML = `
+    <div class="oh-result">
+      <div class="oh-result-emoji">${emoji}</div>
+      <div class="oh-result-title">${titel}</div>
+      <div class="oh-result-sub">${sub}</div>
+      <div class="oh-result-score">😊 ${goed} goed &nbsp;·&nbsp; 😐 ${twijfel} twijfel &nbsp;·&nbsp; 😕 ${fout} fout</div>
+      <button class="oh-result-btn" onclick="saveOhResultaat('${begrip}')">Opslaan & afsluiten</button>
+    </div>`;
+}
+
+async function saveOhResultaat(begrip){
+  const s = sessies.find(x=>x.id===ohState.sessieId);
+  if(s){ s.done=true; s.begrip=begrip; }
+  try{
+    await DB.toggleSessie(ohState.sessieId, true);
+    await DB.setBegrip(ohState.sessieId, begrip);
+    setSyncStatus('ok','gesynchroniseerd');
+  } catch(e){ toast('Sync fout: '+e.message); }
+  closeOverhoring();
+  renderWeek();
+  toast(begrip==='goed'?'😊 Super! Sessie afgerond':begrip==='twijfel'?'😐 Sessie afgerond, nog even herhalen':'😕 Sessie afgerond, vraag om hulp!');
+}
+
+function addOhBubble(type, text, extraClass=''){
+  const chat = document.getElementById('oh-chat');
+  const div = document.createElement('div');
+  div.className = `oh-bubble ${type} ${extraClass}`;
+  div.textContent = text;
+  chat.appendChild(div);
+  div.scrollIntoView({behavior:'smooth', block:'end'});
+}
+
+let ohLoadingEl = null;
+function addOhLoading(){
+  const chat = document.getElementById('oh-chat');
+  ohLoadingEl = document.createElement('div');
+  ohLoadingEl.className = 'oh-bubble ai';
+  ohLoadingEl.innerHTML = '<div class="spin" style="display:inline-block;margin-right:6px"></div>Denkt na…';
+  chat.appendChild(ohLoadingEl);
+  ohLoadingEl.scrollIntoView({behavior:'smooth', block:'end'});
+  document.getElementById('oh-send-btn').disabled = true;
+}
+function removeOhLoading(){
+  ohLoadingEl?.remove();
+  document.getElementById('oh-send-btn').disabled = false;
+}
+function updateOhProgress(){
+  const pct = Math.round((ohState.vraagNr-1)/ohState.maxVragen*100);
+  document.getElementById('oh-progress').textContent = `${ohState.vraagNr}/${ohState.maxVragen}`;
+  document.getElementById('oh-prog-fill').style.width = pct+'%';
 }
 
 // ══ TOAST ══
