@@ -2,7 +2,7 @@
   "name": "Lars Leerplanner",
   "short_name": "Planner",
   "description": "Slimme leerplanner voor Lars",
-  "start_url": "/lars-planner/",
+  "start_url": "/lars-planner/index.html",
   "scope": "/lars-planner/",
   "display": "standalone",
   "background_color": "#0f0f14",
