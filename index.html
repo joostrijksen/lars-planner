@@ -371,7 +371,7 @@ const DEFAULT_VAKKEN = [
 const DAG=['Zo','Ma','Di','Wo','Do','Vr','Za'];
 const MND=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
 const today=()=>fmtDate(new Date());
-function normDate(ds){return ds?ds.slice(0,10):ds;}
+function normDate(ds){return ds?String(ds).slice(0,10):ds;}
 function fmtDate(d){const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');return`${y}-${m}-${dd}`}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 function getMonday(d){d=new Date(d);const day=d.getDay();d.setDate(d.getDate()-day+(day===0?-6:1));d.setHours(0,0,0,0);return d}
@@ -780,7 +780,8 @@ PLANNING REGELS:
 - Formules: max 5-6 per sessie
 - Sessieduur: 15-45 minuten
 - Dag vóór toets: altijd een korte herhaling (15-20 min)
-- Op toetsdag zelf geen sessie
+- Op toetsdag zelf GEEN sessie plannen
+- NOOIT een sessie plannen NA de toetsdatum
 - Max 1 sessie per dag in het weekend
 - Bij 1-2 dagen: compact maar haalbaar
 - Bij >7 dagen: verspreid goed, bouw herhaling in
@@ -790,6 +791,9 @@ Geef ALLEEN dit JSON object terug, geen markdown:
     clearLoading();
     const parsed=parseJSON(raw);
     if(!parsed?.sessies?.length){showError('Planning genereren mislukt. Probeer het opnieuw of gebruik handmatig invoer.');return;}
+    // Filter out any sessions on or after exam date (AI safety net)
+    parsed.sessies = parsed.sessies.filter(s => s.datum < datum);
+    if(!parsed.sessies.length){showError('Geen sessies voor de toetsdatum. Kies een latere toetsdatum.');return;}
     pendingPlan=parsed;
     // render plan preview
     document.getElementById('plan-sessions').innerHTML=parsed.sessies.map((s,i)=>`<div class="plan-sess"><div class="psnum">S${i+1}</div><div><div class="psdate">${fmtShort(s.datum)}</div><div class="pscontent">${s.inhoud}</div><div class="pstime">⏱ ${s.tijd_min} min</div></div></div>`).join('');
