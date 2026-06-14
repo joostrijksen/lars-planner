@@ -676,13 +676,14 @@ function validateBasics(){
 }
 
 async function claudeAPI(messages,maxTokens=1200){
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch(`${SB_URL}/functions/v1/ai-proxy`,{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${SB_KEY}`},
     body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages})
   });
-  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  if(!res.ok){const t=await res.text();throw new Error(`HTTP ${res.status}: ${t}`);}
   const data=await res.json();
+  if(data.error)throw new Error(data.error);
   return data.content?.find(b=>b.type==='text')?.text||'';
 }
 function parseJSON(t){try{return JSON.parse(t.replace(/```json|```/g,'').trim());}catch{return null;}}
