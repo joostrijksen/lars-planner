@@ -1231,7 +1231,7 @@ function addOhFoto(e){
     img.src = ev.target.result;
     img.className = 'oh-thumb';
     thumbs.appendChild(img);
-    document.getElementById('oh-foto-zone').querySelector('.pl').textContent = `${ohState.fotos.length} foto${ohState.fotos.length>1?''s':''} geladen ✓`;
+    document.getElementById('oh-foto-zone').querySelector('.pl').textContent = ohState.fotos.length + (ohState.fotos.length>1 ? " foto's" : ' foto') + ' geladen ✓';
     document.getElementById('oh-foto-zone').classList.add('has');
     // Reset file input so same file can be added again
     e.target.value = '';
