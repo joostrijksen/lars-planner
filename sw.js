@@ -1,5 +1,5 @@
 const CACHE = 'lars-planner-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const ASSETS = ['/lars-planner/', '/lars-planner/index.html', '/lars-planner/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
