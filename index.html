@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lars Planner">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Lars — Leerplanner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root{--bg:#0f0f14;--surface:#181820;--surface2:#22222e;--border:#2e2e3e;--accent:#7c6ff7;--accent2:#5bc4a4;--warn:#f0a05a;--danger:#e05b5b;--text:#e8e8f0;--muted:#8888aa;--r:14px;--sb:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px 10px;position:sticky;top:0;z-index:100}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.logo{font-size:17px;font-weight:600}.logo span{color:var(--accent)}
+.chip{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 9px}
+.tabs{display:flex;gap:3px;background:var(--surface2);border-radius:10px;padding:3px}
+.tab{flex:1;text-align:center;font-size:13px;font-weight:500;padding:7px 4px;border-radius:8px;cursor:pointer;color:var(--muted);border:none;background:transparent;transition:all .2s;font-family:inherit}
+.tab.on{background:var(--accent);color:#fff}
+/* MAIN */
+.main{padding:14px 14px calc(80px + var(--sb))}
+.view{display:none}.view.on{display:block}
+/* SECTION TITLE */
+.stitle{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:18px 0 9px}
+.stitle:first-child{margin-top:0}
+/* WEEK */
+.week-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.wnav{display:flex;gap:5px}
+.wnav button{width:30px;height:30px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit}
+.wlabel{font-size:14px;font-weight:600}
+.day-cards{display:flex;flex-direction:column;gap:8px}
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.day-hdr{display:flex;align-items:center;padding:9px 12px;gap:9px;cursor:pointer}
+.dname{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);width:26px;flex-shrink:0}
+.dnum{width:27px;height:27px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;background:var(--surface2);flex-shrink:0}
+.dnum.today{background:var(--accent);color:#fff}
+.pills{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.pill{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.pill.urgent{background:#3a1818;color:var(--danger);border-color:var(--danger)}
+.pill.soon{background:#2e2012;color:var(--warn);border-color:var(--warn)}
+.pill.ok{background:#122e26;color:var(--accent2);border-color:var(--accent2)}
+.pill.exam{background:rgba(124,111,247,.15);color:var(--accent);border-color:var(--accent)}
+.dempty{font-size:12px;color:var(--muted);font-style:italic}
+.task-list{padding:0 12px 10px;display:flex;flex-direction:column;gap:5px}
+.task-item{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;background:var(--surface2);border-radius:9px;border-left:3px solid var(--border)}
+.task-item.urgent{border-left-color:var(--danger)}
+.task-item.soon{border-left-color:var(--warn)}
+.task-item.ok{border-left-color:var(--accent2)}
+.task-item.exam{border-left-color:var(--accent);background:rgba(124,111,247,.07)}
+.task-info{flex:1;min-width:0}
+.task-name{font-size:13px;font-weight:500}
+.task-name.done{text-decoration:line-through;opacity:.5}
+.task-meta{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4}
+.badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--muted);white-space:nowrap;flex-shrink:0;margin-top:1px}
+.check{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;margin-top:1px;font-size:12px;transition:all .15s}
+.check.done{background:var(--accent2);border-color:var(--accent2);color:#fff}
+/* VAKKEN */
+.vak-cards{display:flex;flex-direction:column;gap:8px}
+.vak-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.vak-hdr{display:flex;align-items:center;gap:11px;padding:11px 13px;cursor:pointer}
+.vak-icon{width:35px;height:35px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.vak-info{flex:1}
+.vak-name{font-size:14px;font-weight:600}
+.vak-count{font-size:12px;color:var(--muted)}
+.chevron{color:var(--muted);font-size:11px;transition:transform .2s}
+.vak-card.open .chevron{transform:rotate(90deg)}
+.pwrap{background:var(--surface2);border-radius:4px;height:3px;margin-top:5px}
+.pbar{height:3px;border-radius:4px;background:var(--accent2);transition:width .4s}
+.vak-body{display:none;padding:0 13px 12px;flex-direction:column;gap:6px}
+.vak-card.open .vak-body{display:flex}
+.toets-card{background:var(--surface2);border-radius:10px;padding:10px 12px;border-left:3px solid var(--accent)}
+.toets-title{font-size:13px;font-weight:600;margin-bottom:3px}
+.toets-meta{font-size:11px;color:var(--muted)}
+.dl-badge{font-family:'DM Mono',monospace;font-size:11px;padding:2px 7px;border-radius:5px;display:inline-block;margin-top:5px}
+.dl-badge.urgent{background:#3a1818;color:var(--danger)}
+.dl-badge.soon{background:#2e2012;color:var(--warn)}
+.dl-badge.ok{background:#122e26;color:var(--accent2)}
+.dl-badge.past{background:#2a2a2a;color:var(--muted)}
+.sess-list{margin-top:7px;display:flex;flex-direction:column;gap:2px}
+.sess-row{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);padding:3px 0;border-bottom:1px solid var(--border)}
+.sess-row:last-child{border:none}
+.sess-row.done{text-decoration:line-through;opacity:.4}
+.snum{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);width:20px;flex-shrink:0}
+.sdate{width:70px;flex-shrink:0}
+/* ADD BTN */
+.add-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border:1.5px dashed var(--border);border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer;background:transparent;width:100%;font-family:inherit;transition:all .2s}
+.add-btn:hover{border-color:var(--accent);color:var(--accent)}
+/* FAB */
+.fab{position:fixed;bottom:calc(18px + var(--sb));right:18px;width:54px;height:54px;border-radius:15px;background:var(--accent);color:#fff;font-size:24px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,111,247,.4);z-index:200}
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:300;display:flex;align-items:flex-end}
+.mbox{width:100%;background:var(--surface);border-radius:20px 20px 0 0;padding:18px 18px calc(22px + var(--sb));max-height:93dvh;overflow-y:auto;animation:up .28s ease}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:34px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.mtitle{font-size:16px;font-weight:600;margin-bottom:14px}
+/* MODE PICKER */
+.mpicker{display:flex;gap:6px;margin-bottom:14px}
+.mbtn{flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;text-align:center;line-height:1.4;transition:all .2s}
+.mbtn .mi{font-size:22px;display:block;margin-bottom:4px}
+.mbtn.on{border-color:var(--accent);background:rgba(124,111,247,.12);color:var(--text)}
+/* FORM */
+.field{margin-bottom:12px}
+.field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:10px 12px;appearance:none;-webkit-appearance:none;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{min-height:70px;resize:none}
+/* PHOTO */
+.pzone{border:1.5px dashed var(--accent);border-radius:12px;padding:14px;text-align:center;cursor:pointer;position:relative;overflow:hidden;transition:background .2s;margin-bottom:8px}
+.pzone.has{border-style:solid;border-color:var(--accent2)}
+.pzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.pzone img{width:100%;max-height:130px;object-fit:cover;border-radius:8px;margin-bottom:6px;display:none}
+.pzone.has img{display:block}
+.pzone .pi{font-size:26px;margin-bottom:4px}
+.pzone .pl{font-size:13px;font-weight:500;color:var(--accent)}
+.pzone.has .pl{color:var(--accent2)}
+.pzone .ps{font-size:11px;color:var(--muted);margin-top:2px}
+/* OPMERKING */
+.orow{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 4px 4px 11px;margin-bottom:12px}
+.orow input{flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:14px;outline:none;padding:8px 0}
+.osend{width:33px;height:33px;border-radius:7px;background:var(--accent);border:none;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* CHAPTERS */
+.ch-list{display:flex;flex-direction:column;gap:0;margin-bottom:12px}
+.ch-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)}
+.ch-row:last-child{border:none}
+.ch-row input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0}
+.chnum{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);width:36px;flex-shrink:0}
+/* AI */
+.ai-load{display:none;align-items:center;gap:9px;padding:11px 12px;background:var(--surface2);border-radius:10px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.ai-load.on{display:flex}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.errbox{background:#2a1212;border:1px solid var(--danger);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--danger)}
+/* PLAN */
+.plan-box{background:var(--surface2);border:1px solid var(--accent);border-radius:11px;padding:12px;margin-bottom:12px;display:none}
+.plan-box.on{display:block}
+.plan-title{font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.plan-sess{display:flex;align-items:flex-start;gap:8px;background:var(--surface);border-radius:8px;padding:8px 10px;border:1px solid var(--border);margin-bottom:5px}
+.psnum{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);width:22px;flex-shrink:0;padding-top:1px}
+.psdate{font-size:12px;font-weight:600}
+.pscontent{font-size:12px;color:var(--muted);margin-top:1px;line-height:1.4}
+.pstime{font-size:11px;color:var(--accent2);margin-top:2px}
+.plan-sum{margin-top:10px;padding-top:9px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6}
+/* BTNS */
+.btn-row{display:flex;gap:7px;margin-top:6px}
+.btn{flex:1;padding:13px;border-radius:11px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;border:none}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-full{width:100%;padding:12px;border-radius:11px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;border:none;margin-bottom:8px}
+.btn-full.primary{background:var(--accent);color:#fff}
+.btn-full.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+/* DIVIDER */
+.div{height:1px;background:var(--border);margin:10px 0}
+/* TOAST */
+.toast{position:fixed;bottom:calc(88px + var(--sb));left:50%;transform:translateX(-50%) translateY(12px);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:all .25s;white-space:nowrap;z-index:500}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* SYNC STATUS */
+.sync{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.sync.err{color:var(--danger)}
+.sync.ok{color:var(--accent2)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+/* EMPTY */
+.empty{text-align:center;padding:40px 16px}
+.empty .ei{font-size:44px;margin-bottom:10px}
+.empty .et{font-size:15px;font-weight:600;margin-bottom:5px}
+.empty .es{font-size:13px;color:var(--muted);line-height:1.5}
+/* DELETE BTN */
+.del-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
+.del-btn:hover{color:var(--danger)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo">Lars <span>Planner</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="sync" id="sync-status"><div class="dot"></div><span>laden…</span></div>
+      <div class="chip" id="date-chip"></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" onclick="switchTab('week')">📅 Week</button>
+    <button class="tab" onclick="switchTab('vakken')">📚 Vakken</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="view on" id="view-week">
+    <div class="week-hdr">
+      <div class="wnav">
+        <button onclick="changeWeek(-1)">‹</button>
+        <button onclick="changeWeek(1)">›</button>
+      </div>
+      <div class="wlabel" id="week-label"></div>
+    </div>
+    <div class="day-cards" id="day-cards"></div>
+  </div>
+  <div class="view" id="view-vakken">
+    <div class="stitle">Mijn vakken</div>
+    <div class="vak-cards" id="vak-cards"></div>
+    <div style="margin-top:10px">
+      <button class="add-btn" onclick="openVakModal()">+ Nieuw vak toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="openModal()">+</button>
+
+<!-- TOETS MODAL -->
+<div class="overlay" id="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+<div class="mbox">
+  <div class="mhandle"></div>
+  <div class="mtitle">📚 Nieuwe leertaak</div>
+
+  <div class="field">
+    <label>Vak</label>
+    <select id="f-vak" onchange="resetPlan()">
+      <option value="">Kies vak…</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Naam / onderwerp</label>
+    <input type="text" id="f-naam" placeholder="Bijv. Toets Fotosynthese H3">
+  </div>
+  <div class="field">
+    <label>Toetsdatum</label>
+    <input type="date" id="f-datum" onchange="resetPlan()">
+  </div>
+  <div class="div"></div>
+  <div class="field"><label>Wat ga je leren?</label></div>
+  <div class="mpicker">
+    <button class="mbtn on" id="mb-toc" onclick="setMode('toc')"><span class="mi">📖</span>Inhouds&shy;opgave</button>
+    <button class="mbtn" id="mb-material" onclick="setMode('material')"><span class="mi">📷</span>Leerstof foto's</button>
+    <button class="mbtn" id="mb-manual" onclick="setMode('manual')"><span class="mi">✏️</span>Zelf invoeren</button>
+  </div>
+
+  <!-- TOC MODE -->
+  <div id="mode-toc">
+    <div class="pzone" id="toc-zone">
+      <input type="file" accept="image/*" capture="environment" onchange="handleTocPhoto(event)">
+      <img id="toc-thumb" alt="">
+      <div class="pi">📷</div>
+      <div class="pl">Foto van inhoudsopgave</div>
+      <div class="ps">Camera of bibliotheek</div>
+    </div>
+    <div class="orow" id="toc-orow" style="display:none">
+      <input type="text" id="toc-note" placeholder="Bijv. alleen h1 t/m h4, h3.2 niet" onkeydown="if(event.key==='Enter')analyzeToc()">
+      <button class="osend" onclick="analyzeToc()">↑</button>
+    </div>
+    <button class="btn-full primary" id="toc-analyze-btn" style="display:none" onclick="analyzeToc()">📖 Analyseer inhoudsopgave</button>
+    <div id="toc-chapters" style="display:none">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Selecteer hoofdstukken</div>
+      <div class="ch-list" id="ch-list"></div>
+      <button class="btn-full primary" onclick="generatePlanFromToc()">🤖 Maak planning</button>
+      <button class="btn-full secondary" onclick="resetToc()">← Opnieuw foto</button>
+    </div>
+  </div>
+
+  <!-- MATERIAL MODE -->
+  <div id="mode-material" style="display:none">
+    <div id="mat-slots"></div>
+    <button class="add-btn" style="margin-bottom:12px" onclick="addMatSlot()">+ Nog een foto</button>
+    <div class="orow">
+      <input type="text" id="mat-note" placeholder="Bijv. Frans woordjes H4 en H5" onkeydown="if(event.key==='Enter')analyzeMaterial()">
+      <button class="osend" onclick="analyzeMaterial()">↑</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">💡 Maak meerdere foto's voor meer leerstof</div>
+    <button class="btn-full primary" onclick="analyzeMaterial()">🤖 Analyseer &amp; maak planning</button>
+  </div>
+
+  <!-- MANUAL MODE -->
+  <div id="mode-manual" style="display:none">
+    <div class="field">
+      <label>Beschrijf de leerstof</label>
+      <textarea id="manual-text" placeholder="Bijv: 45 Franse woordjes H4, 12 begrippen fotosynthese…"></textarea>
+    </div>
+    <button class="btn-full primary" onclick="analyzeManual()">🤖 Maak planning</button>
+  </div>
+
+  <!-- AI STATUS -->
+  <div class="ai-load" id="ai-load"><div class="spin"></div><span id="ai-msg">Analyseren…</span></div>
+  <div class="errbox" id="errbox" style="display:none"></div>
+
+  <!-- PLAN PREVIEW -->
+  <div class="plan-box" id="plan-box">
+    <div class="plan-title">✨ Leerplanning</div>
+    <div id="plan-sessions"></div>
+    <div class="plan-sum" id="plan-sum"></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn secondary" onclick="closeModal()">Annuleren</button>
+    <button class="btn primary" id="save-btn" style="display:none" onclick="saveTaak()">Opslaan ✓</button>
+  </div>
+</div>
+</div>
+
+<!-- VAK MODAL -->
+<div class="overlay" id="vak-overlay" style="display:none" onclick="if(event.target===this)closeVakModal()">
+<div class="mbox">
+  <div class="mhandle"></div>
+  <div class="mtitle">Nieuw vak</div>
+  <div class="field"><label>Vaknaam</label><input type="text" id="vak-naam" placeholder="Bijv. Scheikunde"></div>
+  <div class="field"><label>Emoji</label><input type="text" id="vak-emoji" placeholder="🧪" maxlength="2"></div>
+  <div class="field">
+    <label>Kleur</label>
+    <select id="vak-kleur">
+      <option value="#7c6ff7">Paars</option><option value="#5bc4a4">Groen</option>
+      <option value="#f0a05a">Oranje</option><option value="#5aa6f0">Blauw</option>
+      <option value="#e05b5b">Rood</option><option value="#c45bb8">Roze</option>
+      <option value="#e8885a">Zalm</option>
+    </select>
+  </div>
+  <div class="btn-row">
+    <button class="btn secondary" onclick="closeVakModal()">Annuleren</button>
+    <button class="btn primary" onclick="saveVak()">Toevoegen</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ SUPABASE ══
+const SB_URL = 'https://hrxtbbcjfzorbdlyxtut.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyeHRiYmNqZnpvcmJkbHl4dHV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDc0ODYsImV4cCI6MjA5MzgyMzQ4Nn0.cRJGJbcfC9UzWC84TWogvgFtsaQIrvy4CbeapjyDlIc';
+
+async function sb(method, path, body) {
+  const opts = { method, headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, opts);
+  if (!r.ok) { const e = await r.text(); throw new Error(e); }
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+const DB = {
+  getVakken:    ()  => sb('GET',    'lp_vakken?order=naam'),
+  addVak:       (v) => sb('POST',   'lp_vakken', v),
+  deleteVak:    (id)=> sb('DELETE', `lp_vakken?id=eq.${id}`),
+  getToetsen:   ()  => sb('GET',    'lp_toetsen?order=datum'),
+  addToets:     (t) => sb('POST',   'lp_toetsen', t),
+  deleteToets:  (id)=> sb('DELETE', `lp_toetsen?id=eq.${id}`),
+  getSessies:   ()  => sb('GET',    'lp_sessies?order=datum'),
+  addSessies:   (arr)=>sb('POST',   'lp_sessies', arr),
+  toggleSessie: (id,done)=>sb('PATCH',`lp_sessies?id=eq.${id}`,{done}),
+  deleteSessies:(tid)=>sb('DELETE', `lp_sessies?toets_id=eq.${tid}`),
+};
+
+// ══ STATE ══
+let vakken = [], toetsen = [], sessies = [];
+const DEFAULT_VAKKEN = [
+  {naam:'Biologie',emoji:'🧬',kleur:'#5bc4a4'},
+  {naam:'Aardrijkskunde',emoji:'🌍',kleur:'#5aa6f0'},
+  {naam:'Nederlands',emoji:'📝',kleur:'#7c6ff7'},
+  {naam:'Engels',emoji:'🇬🇧',kleur:'#f0a05a'},
+  {naam:'Wiskunde',emoji:'📐',kleur:'#e05b5b'},
+  {naam:'Natuurkunde',emoji:'⚡',kleur:'#c45bb8'},
+  {naam:'Frans',emoji:'🇫🇷',kleur:'#e8885a'},
+];
+
+// ══ DATE UTILS ══
+const DAG=['Zo','Ma','Di','Wo','Do','Vr','Za'];
+const MND=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+const today=()=>fmtDate(new Date());
+function fmtDate(d){return d.toISOString().slice(0,10)}
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function getMonday(d){d=new Date(d);const day=d.getDay();d.setDate(d.getDate()-day+(day===0?-6:1));d.setHours(0,0,0,0);return d}
+function fmtShort(ds){const d=new Date(ds+'T00:00:00');return`${DAG[d.getDay()]} ${d.getDate()} ${MND[d.getMonth()]}`}
+function daysUntil(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((new Date(ds)-t)/86400000)}
+function urgency(ds){const d=daysUntil(ds);if(d<0)return'past';if(d<=2)return'urgent';if(d<=7)return'soon';return'ok'}
+function urgencyLabel(ds){const d=daysUntil(ds);if(d<0)return'Verlopen';if(d===0)return'Vandaag!';if(d===1)return'Morgen';return`nog ${d}d`}
+
+// ══ SYNC STATUS ══
+function setSyncStatus(state,msg){
+  const el=document.getElementById('sync-status');
+  el.className='sync'+(state==='ok'?' ok':state==='err'?' err':'');
+  el.innerHTML=`<div class="dot"></div><span>${msg}</span>`;
+}
+
+// ══ INIT ══
+async function init(){
+  const now=new Date();
+  document.getElementById('date-chip').textContent=`${DAG[now.getDay()]} ${now.getDate()} ${MND[now.getMonth()]}`;
+  setSyncStatus('','laden…');
+  try{
+    [vakken,toetsen,sessies]=await Promise.all([DB.getVakken(),DB.getToetsen(),DB.getSessies()]);
+    if(!vakken.length){
+      // seed default vakken
+      for(const v of DEFAULT_VAKKEN){const r=await DB.addVak(v);vakken.push(r[0]);}
+    }
+    setSyncStatus('ok','gesynchroniseerd');
+    fillVakSelect();
+    renderWeek();
+    addMatSlot();
+  }catch(e){
+    setSyncStatus('err','verbindingsfout');
+    toast('⚠️ Supabase niet bereikbaar: '+e.message);
+  }
+}
+
+// ══ TABS ══
+let currentTab='week';
+function switchTab(t){
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',['week','vakken'][i]===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById('view-'+t).classList.add('on');
+  if(t==='vakken')renderVakken();
+  if(t==='week')renderWeek();
+}
+
+// ══ WEEK VIEW ══
+let weekOffset=0;
+function changeWeek(d){weekOffset+=d;renderWeek();}
+function renderWeek(){
+  const monday=getMonday(addDays(new Date(),weekOffset*7));
+  const sunday=addDays(monday,6);
+  document.getElementById('week-label').textContent=`${monday.getDate()} ${MND[monday.getMonth()]} – ${sunday.getDate()} ${MND[sunday.getMonth()]}`;
+  const todayStr=today();
+  const c=document.getElementById('day-cards');
+  c.innerHTML='';
+  const DAG_NAMES=['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  for(let i=0;i<7;i++){
+    const day=addDays(monday,i);
+    const ds=fmtDate(day);
+    const isToday=ds===todayStr;
+    // gather items
+    const items=[];
+    toetsen.forEach(t=>{
+      if(t.datum===ds)items.push({type:'exam',toets:t});
+      sessies.filter(s=>s.toets_id===t.id&&s.datum===ds).forEach(s=>items.push({type:'session',toets:t,sessie:s}));
+    });
+    let pillsHtml=items.length===0?`<span class="dempty">Vrij 🎉</span>`:
+      items.map(it=>{
+        if(it.type==='exam')return`<span class="pill exam">🎯 ${it.toets.naam}</span>`;
+        const u=urgency(it.toets.datum);
+        const v=vakken.find(x=>x.id===it.toets.vak_id);
+        return`<span class="pill ${u}">${v?.emoji||''} ${v?.naam||''}</span>`;
+      }).join('');
+    let taskHtml='';
+    if(items.length>0){
+      const totalForToets=(t)=>sessies.filter(s=>s.toets_id===t.id).length;
+      const idxForSessie=(t,s)=>sessies.filter(x=>x.toets_id===t.id).findIndex(x=>x.id===s.id);
+      taskHtml=`<div class="task-list">${items.map(it=>{
+        if(it.type==='exam'){
+          const v=vakken.find(x=>x.id===it.toets.vak_id);
+          return`<div class="task-item exam"><div class="task-info"><div class="task-name">🎯 TOETS: ${it.toets.naam}</div><div class="task-meta">${v?.naam||''} — Veel succes!</div></div></div>`;
+        }
+        const{toets:t,sessie:sv}=it;
+        const v=vakken.find(x=>x.id===t.vak_id);
+        const u=urgency(t.datum);
+        const idx=idxForSessie(t,sv)+1;
+        const tot=totalForToets(t);
+        return`<div class="task-item ${u}">
+          <div class="task-info">
+            <div class="task-name${sv.done?' done':''}">${t.naam}</div>
+            <div class="task-meta">${v?.naam||''} · ⏱ ${sv.tijd_min} min<br>${sv.inhoud}</div>
+          </div>
+          <span class="badge">${idx}/${tot}</span>
+          <div class="check${sv.done?' done':''}" onclick="toggleSessie('${sv.id}',${!sv.done})">✓</div>
+        </div>`;
+      }).join('')}</div>`;
+    }
+    c.innerHTML+=`<div class="day-card">
+      <div class="day-hdr" onclick="this.nextElementSibling&&(this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none')">
+        <div class="dname">${DAG_NAMES[i]}</div>
+        <div class="dnum${isToday?' today':''}">${day.getDate()}</div>
+        <div class="pills">${pillsHtml}</div>
+      </div>${taskHtml}</div>`;
+  }
+}
+
+async function toggleSessie(id,done){
+  const s=sessies.find(x=>x.id===id);
+  if(!s)return;
+  s.done=done;
+  renderWeek();
+  try{await DB.toggleSessie(id,done);setSyncStatus('ok','gesynchroniseerd');}
+  catch(e){s.done=!done;renderWeek();toast('Sync fout: '+e.message);}
+}
+
+// ══ VAKKEN VIEW ══
+function renderVakken(){
+  const c=document.getElementById('vak-cards');
+  c.innerHTML='';
+  fillVakSelect();
+  if(!vakken.length){c.innerHTML=`<div class="empty"><div class="ei">📚</div><div class="et">Geen vakken</div><div class="es">Voeg je eerste vak toe</div></div>`;return;}
+  vakken.forEach(vak=>{
+    const vToetsen=toetsen.filter(t=>t.vak_id===vak.id);
+    const vSessies=sessies.filter(s=>vToetsen.some(t=>t.id===s.toets_id));
+    const done=vSessies.filter(s=>s.done).length;
+    const total=vSessies.length;
+    const pct=total?Math.round(done/total*100):0;
+    const div=document.createElement('div');
+    div.className='vak-card';
+    div.innerHTML=`<div class="vak-hdr" onclick="this.parentElement.classList.toggle('open')">
+      <div class="vak-icon" style="background:${vak.kleur}22;color:${vak.kleur}">${vak.emoji}</div>
+      <div class="vak-info">
+        <div class="vak-name">${vak.naam}</div>
+        <div class="vak-count">${vToetsen.length} toets${vToetsen.length!==1?'en':''} · ${done}/${total} sessies</div>
+        ${total?`<div class="pwrap"><div class="pbar" style="width:${pct}%;background:${vak.kleur}"></div></div>`:''}
+      </div>
+      <div class="chevron">▶</div>
+    </div>
+    <div class="vak-body">
+      ${vToetsen.length===0?'<div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Geen toetsen</div>':
+        vToetsen.map(t=>{
+          const u=urgency(t.datum);
+          const tSess=sessies.filter(s=>s.toets_id===t.id);
+          const tDone=tSess.filter(s=>s.done).length;
+          return`<div class="toets-card">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between">
+              <div class="toets-title">${t.naam}</div>
+              <button class="del-btn" onclick="deleteToets('${t.id}')" title="Verwijderen">🗑</button>
+            </div>
+            <div class="toets-meta">📅 ${fmtShort(t.datum)} · ${tDone}/${tSess.length} sessies</div>
+            <span class="dl-badge ${u}">${urgencyLabel(t.datum)}</span>
+            ${tSess.length?`<div class="sess-list">${tSess.slice(0,4).map((s,i)=>`<div class="sess-row${s.done?' done':''}"><span class="snum">S${i+1}</span><span class="sdate">${fmtShort(s.datum)}</span><span style="flex:1">${s.inhoud}</span></div>`).join('')}${tSess.length>4?`<div style="font-size:11px;color:var(--muted);padding:3px 0">+${tSess.length-4} meer…</div>`:''}</div>`:''}
+          </div>`;
+        }).join('')
+      }
+      <button class="add-btn" onclick="openModal('${vak.id}')">+ Toets toevoegen</button>
+    </div>`;
+    c.appendChild(div);
+  });
+}
+
+async function deleteToets(id){
+  if(!confirm('Toets en alle sessies verwijderen?'))return;
+  try{
+    await DB.deleteSessies(id);
+    await DB.deleteToets(id);
+    toetsen=toetsen.filter(t=>t.id!==id);
+    sessies=sessies.filter(s=>s.toets_id!==id);
+    renderVakken();renderWeek();
+    toast('🗑 Toets verwijderd');
+  }catch(e){toast('Fout: '+e.message);}
+}
+
+// ══ MODAL ══
+let pendingPlan=null, pendingChapters=[], matSlots=[], matSlotCount=0, currentMode='toc', preVakId='';
+
+function openModal(vakId=''){
+  preVakId=vakId;
+  resetModal();
+  document.getElementById('f-datum').min=today();
+  if(vakId)document.getElementById('f-vak').value=vakId;
+  document.getElementById('modal-overlay').style.display='flex';
+}
+function closeModal(){document.getElementById('modal-overlay').style.display='none';}
+
+function resetModal(){
+  pendingPlan=null;pendingChapters=[];matSlots=[];matSlotCount=0;
+  document.getElementById('f-vak').value=preVakId||'';
+  document.getElementById('f-naam').value='';
+  document.getElementById('f-datum').value='';
+  document.getElementById('ai-load').classList.remove('on');
+  document.getElementById('plan-box').classList.remove('on');
+  document.getElementById('errbox').style.display='none';
+  document.getElementById('save-btn').style.display='none';
+  document.getElementById('mat-slots').innerHTML='';
+  document.getElementById('manual-text').value='';
+  resetToc();
+  setMode('toc');
+  fillVakSelect();
+  matSlotCount=0;matSlots=[];addMatSlot();
+}
+
+function resetPlan(){
+  pendingPlan=null;
+  document.getElementById('plan-box').classList.remove('on');
+  document.getElementById('errbox').style.display='none';
+  document.getElementById('save-btn').style.display='none';
+}
+
+function resetToc(){
+  const z=document.getElementById('toc-zone');
+  z.classList.remove('has');
+  z.querySelector('img').src='';
+  document.getElementById('toc-thumb').style.display='none';
+  document.getElementById('toc-orow').style.display='none';
+  document.getElementById('toc-analyze-btn').style.display='none';
+  document.getElementById('toc-chapters').style.display='none';
+  document.getElementById('toc-note').value='';
+  pendingChapters=[];
+}
+
+function setMode(m){
+  currentMode=m;
+  ['toc','material','manual'].forEach(x=>{
+    document.getElementById('mb-'+x).classList.toggle('on',x===m);
+    document.getElementById('mode-'+x).style.display=x===m?'block':'none';
+  });
+  resetPlan();
+}
+
+function fillVakSelect(){
+  const sel=document.getElementById('f-vak');
+  const val=sel.value;
+  sel.innerHTML='<option value="">Kies vak…</option>'+vakken.map(v=>`<option value="${v.id}">${v.emoji} ${v.naam}</option>`).join('');
+  if(val)sel.value=val;
+}
+
+// ══ PHOTO HANDLERS ══
+function handleTocPhoto(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const z=document.getElementById('toc-zone');
+    const img=document.getElementById('toc-thumb');
+    img.src=ev.target.result;img.style.display='block';
+    z.classList.add('has');
+    z.querySelector('.pl').textContent='Foto geladen';
+    z.querySelector('.ps').textContent='Tik om te vervangen';
+    document.getElementById('toc-orow').style.display='flex';
+    document.getElementById('toc-analyze-btn').style.display='block';
+    document.getElementById('toc-note').focus();
+  };
+  r.readAsDataURL(file);
+}
+
+function addMatSlot(){
+  const idx=matSlotCount++;
+  matSlots.push(null);
+  const c=document.getElementById('mat-slots');
+  const div=document.createElement('div');
+  div.className='pzone';div.id=`mslot-${idx}`;
+  div.innerHTML=`<input type="file" accept="image/*" capture="environment" onchange="handleMatPhoto(event,${idx})">
+    <img id="mthumb-${idx}" alt="" style="display:none">
+    <div class="pi">📷</div>
+    <div class="pl">Foto ${idx+1} van leerstof</div>
+    <div class="ps">Woordenlijst, aantekeningen…</div>`;
+  c.appendChild(div);
+}
+
+function handleMatPhoto(e,idx){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    matSlots[idx]=ev.target.result;
+    const slot=document.getElementById(`mslot-${idx}`);
+    const img=document.getElementById(`mthumb-${idx}`);
+    img.src=ev.target.result;img.style.display='block';
+    slot.classList.add('has');
+    slot.querySelector('.pl').textContent=`Foto ${idx+1} geladen ✓`;
+    slot.querySelector('.ps').textContent='Tik om te vervangen';
+  };
+  r.readAsDataURL(file);
+}
+
+// ══ AI HELPERS ══
+function setLoading(msg){
+  document.getElementById('ai-msg').textContent=msg||'Analyseren…';
+  document.getElementById('ai-load').classList.add('on');
+  document.getElementById('errbox').style.display='none';
+}
+function clearLoading(){document.getElementById('ai-load').classList.remove('on');}
+function showError(msg){
+  document.getElementById('errbox').textContent='⚠️ '+msg;
+  document.getElementById('errbox').style.display='block';
+}
+
+function getVakNaam(){const v=vakken.find(x=>x.id===document.getElementById('f-vak').value);return v?.naam||'onbekend';}
+function validateBasics(){
+  if(!document.getElementById('f-vak').value){toast('Kies eerst een vak');return false;}
+  if(!document.getElementById('f-datum').value){toast('Kies eerst de toetsdatum');return false;}
+  return true;
+}
+
+async function claudeAPI(messages,maxTokens=1200){
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:maxTokens,messages})
+  });
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  const data=await res.json();
+  return data.content?.find(b=>b.type==='text')?.text||'';
+}
+function parseJSON(t){try{return JSON.parse(t.replace(/```json|```/g,'').trim());}catch{return null;}}
+function imgBlock(u){return{type:'image',source:{type:'base64',media_type:u.split(';')[0].split(':')[1],data:u.split(',')[1]}};}
+
+// ══ ANALYZE TOC ══
+async function analyzeToc(){
+  const img=document.getElementById('toc-thumb').src;
+  if(!img){toast('Maak eerst een foto');return;}
+  if(!validateBasics())return;
+  document.getElementById('toc-orow').style.display='none';
+  document.getElementById('toc-analyze-btn').style.display='none';
+  setLoading('Inhoudsopgave lezen…');
+  const note=document.getElementById('toc-note').value.trim();
+  try{
+    const raw=await claudeAPI([{role:'user',content:[
+      imgBlock(img),
+      {type:'text',text:`Analyseer deze schoolboek inhoudsopgave.${note?`\nLeerlinginstructie: "${note}"`:''}
+Geef ALLEEN een JSON array. Pas selectie aan op instructie.
+Formaat: [{"num":"1","titel":"Naam"}]
+Geen markdown, alleen JSON.`}
+    ]}],800);
+    clearLoading();
+    const parsed=parseJSON(raw);
+    if(!parsed?.length){showError('Geen inhoudsopgave herkend. Controleer de foto.');document.getElementById('toc-analyze-btn').style.display='block';return;}
+    pendingChapters=parsed;
+    const list=document.getElementById('ch-list');
+    list.innerHTML=parsed.map((c,i)=>`<div class="ch-row"><input type="checkbox" id="ch${i}" checked><span class="chnum">${c.num}</span><label for="ch${i}">${c.titel}</label></div>`).join('');
+    document.getElementById('toc-chapters').style.display='block';
+  }catch(e){clearLoading();showError(e.message);document.getElementById('toc-analyze-btn').style.display='block';}
+}
+
+async function generatePlanFromToc(){
+  const selected=pendingChapters.filter((_,i)=>document.getElementById(`ch${i}`)?.checked);
+  if(!selected.length){toast('Selecteer minstens één hoofdstuk');return;}
+  const naam=document.getElementById('f-naam').value||`Toets ${getVakNaam()}`;
+  if(!document.getElementById('f-naam').value)document.getElementById('f-naam').value=naam;
+  document.getElementById('toc-chapters').style.display='none';
+  await callPlanningAI(`De leerling moet deze hoofdstukken leren:\n${selected.map(c=>`${c.num} ${c.titel}`).join('\n')}`);
+}
+
+// ══ ANALYZE MATERIAL ══
+async function analyzeMaterial(){
+  const photos=matSlots.filter(Boolean);
+  if(!photos.length){toast('Voeg minstens één foto toe');return;}
+  if(!validateBasics())return;
+  const note=document.getElementById('mat-note').value.trim();
+  setLoading('Leerstof analyseren…');
+  try{
+    const raw=await claudeAPI([{role:'user',content:[
+      ...photos.map(imgBlock),
+      {type:'text',text:`Analyseer deze ${photos.length} foto('s) van schoolleerstof.${note?`\nInstructie: "${note}"`:''}
+Beschrijf beknopt (3-5 zinnen Nederlands): soort leerstof, hoeveel items, onderwerpen.`}
+    ]}],500);
+    const naam=document.getElementById('f-naam').value||`Toets ${getVakNaam()}`;
+    if(!document.getElementById('f-naam').value)document.getElementById('f-naam').value=naam;
+    await callPlanningAI(`De leerstof bestaat uit:\n${raw}`);
+  }catch(e){clearLoading();showError(e.message);}
+}
+
+// ══ ANALYZE MANUAL ══
+async function analyzeManual(){
+  const text=document.getElementById('manual-text').value.trim();
+  if(!text){toast('Beschrijf de leerstof');return;}
+  if(!validateBasics())return;
+  const naam=document.getElementById('f-naam').value||`Toets ${getVakNaam()}`;
+  if(!document.getElementById('f-naam').value)document.getElementById('f-naam').value=naam;
+  await callPlanningAI(`De leerling beschrijft de leerstof als:\n${text}`);
+}
+
+// ══ PLANNING AI ══
+async function callPlanningAI(desc){
+  setLoading('Slimme planning maken…');
+  const datum=document.getElementById('f-datum').value;
+  const daysLeft=daysUntil(datum);
+  const naam=document.getElementById('f-naam').value||`Toets ${getVakNaam()}`;
+  try{
+    const raw=await claudeAPI([{role:'user',content:`Je bent een slimme leercoach voor een scholier op de middelbare school.
+
+LEERSTOF:
+${desc}
+
+DETAILS:
+- Vak: ${getVakNaam()}
+- Toets: "${naam}"
+- Toetsdatum: ${datum} (over ${daysLeft} dagen, vandaag ${today()})
+
+PLANNING REGELS:
+- Verspreid leerstof REALISTISCH, nooit alles in één sessie
+- Woordenlijsten: max 15-20 woorden per sessie
+- Begrippen: max 8-10 per sessie  
+- Formules: max 5-6 per sessie
+- Sessieduur: 15-45 minuten
+- Dag vóór toets: altijd een korte herhaling (15-20 min)
+- Op toetsdag zelf geen sessie
+- Max 1 sessie per dag in het weekend
+- Bij 1-2 dagen: compact maar haalbaar
+- Bij >7 dagen: verspreid goed, bouw herhaling in
+
+Geef ALLEEN dit JSON object terug, geen markdown:
+{"sessies":[{"datum":"YYYY-MM-DD","inhoud":"Wat te leren","tijd_min":25}],"tip":"Motiverende tip"}`}]);
+    clearLoading();
+    const parsed=parseJSON(raw);
+    if(!parsed?.sessies?.length){showError('Planning genereren mislukt. Probeer het opnieuw of gebruik handmatig invoer.');return;}
+    pendingPlan=parsed;
+    // render plan preview
+    document.getElementById('plan-sessions').innerHTML=parsed.sessies.map((s,i)=>`<div class="plan-sess"><div class="psnum">S${i+1}</div><div><div class="psdate">${fmtShort(s.datum)}</div><div class="pscontent">${s.inhoud}</div><div class="pstime">⏱ ${s.tijd_min} min</div></div></div>`).join('');
+    const totMin=parsed.sessies.reduce((a,s)=>a+s.tijd_min,0);
+    document.getElementById('plan-sum').innerHTML=`📊 ${parsed.sessies.length} sessies · ${Math.round(totMin/60*10)/10} uur totaal<br>${parsed.tip?`<em>💡 ${parsed.tip}</em>`:''}`;
+    document.getElementById('plan-box').classList.add('on');
+    document.getElementById('save-btn').style.display='block';
+  }catch(e){clearLoading();showError(e.message);}
+}
+
+// ══ SAVE TOETS ══
+async function saveTaak(){
+  if(!pendingPlan)return;
+  const vakId=document.getElementById('f-vak').value;
+  const naam=document.getElementById('f-naam').value.trim()||`Toets ${getVakNaam()}`;
+  const datum=document.getElementById('f-datum').value;
+  if(!vakId){toast('Kies een vak');return;}
+  if(!datum){toast('Kies een datum');return;}
+  document.getElementById('save-btn').disabled=true;
+  document.getElementById('save-btn').textContent='Opslaan…';
+  try{
+    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum});
+    const toets=toetsRes[0];
+    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
+    const sessieRes=await DB.addSessies(sessieData);
+    toetsen.push(toets);
+    sessies.push(...sessieRes);
+    setSyncStatus('ok','gesynchroniseerd');
+    closeModal();
+    renderWeek();
+    if(currentTab==='vakken')renderVakken();
+    toast(`✅ ${sessieRes.length} leersessies ingepland!`);
+  }catch(e){
+    toast('Opslaan mislukt: '+e.message);
+    document.getElementById('save-btn').disabled=false;
+    document.getElementById('save-btn').textContent='Opslaan ✓';
+  }
+}
+
+// ══ VAK MODAL ══
+function openVakModal(){document.getElementById('vak-overlay').style.display='flex';}
+function closeVakModal(){document.getElementById('vak-overlay').style.display='none';}
+async function saveVak(){
+  const naam=document.getElementById('vak-naam').value.trim();
+  const emoji=document.getElementById('vak-emoji').value.trim()||'📘';
+  const kleur=document.getElementById('vak-kleur').value;
+  if(!naam){toast('Vul een vaknaam in');return;}
+  try{
+    const res=await DB.addVak({naam,emoji,kleur});
+    vakken.push(res[0]);
+    closeVakModal();
+    renderVakken();fillVakSelect();
+    toast('Vak toegevoegd!');
+    document.getElementById('vak-naam').value='';
+    document.getElementById('vak-emoji').value='';
+  }catch(e){toast('Fout: '+e.message);}
+}
+
+// ══ TOAST ══
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2800);
+}
+
+// ══ SERVICE WORKER ══
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("/sw.js").catch(() => {})
+  );
+}
+
+// ══ START ══
+init();
+</script>
+</body>
+</html>
