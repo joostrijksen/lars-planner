@@ -96,9 +96,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="empty"><div class="ei">⏳</div><div class="et">Laden…</div></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 const SB_URL='https://hrxtbbcjfzorbdlyxtut.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyeHRiYmNqZnpvcmJkbHl4dHV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDc0ODYsImV4cCI6MjA5MzgyMzQ4Nn0.cRJGJbcfC9UzWC84TWogvgFtsaQIrvy4CbeapjyDlIc';
+const client = supabase.createClient(SB_URL, SB_KEY);
 
 async function sb(path){
   const r=await fetch(`${SB_URL}/rest/v1/${path}`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});
@@ -265,8 +267,38 @@ function render(vakken, toetsen, allSessies){
 }
 
 load();
-// Auto-refresh every 5 minutes
-setInterval(load, 5*60*1000);
+
+// ── REALTIME: live updates when Lars checks off sessions ──
+client.channel('lars-sessies')
+  .on('postgres_changes', {event:'UPDATE', schema:'public', table:'lp_sessies'}, payload => {
+    showLiveUpdate(payload.new);
+    load();
+  })
+  .on('postgres_changes', {event:'INSERT', schema:'public', table:'lp_toetsen'}, () => load())
+  .subscribe();
+
+function showLiveUpdate(sessie){
+  if(!sessie.done) return;
+  const emoji = sessie.begrip==='goed'?'😊':sessie.begrip==='twijfel'?'😐':sessie.begrip==='hulp'?'😕':'✓';
+  const msg = sessie.begrip==='hulp'
+    ? '⚠️ Lars heeft hulp nodig!'
+    : sessie.begrip==='twijfel'
+    ? '💬 Lars twijfelt nog'
+    : '✅ Lars heeft een sessie afgerond';
+  showToast(msg+' '+emoji);
+  if(sessie.begrip==='hulp'){
+    // Flash red border on page
+    document.body.style.border='3px solid var(--danger)';
+    setTimeout(()=>document.body.style.border='',3000);
+  }
+}
+
+function showToast(msg){
+  let t=document.getElementById('rt-toast');
+  if(!t){t=document.createElement('div');t.id='rt-toast';t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:10px 18px;font-size:13px;font-weight:500;z-index:999;transition:opacity .3s;white-space:nowrap';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.opacity='0',4000);
+}
 </script>
 </body>
 </html>
