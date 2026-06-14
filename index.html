@@ -374,8 +374,8 @@ const today=()=>fmtDate(new Date());
 function fmtDate(d){return d.toISOString().slice(0,10)}
 function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
 function getMonday(d){d=new Date(d);const day=d.getDay();d.setDate(d.getDate()-day+(day===0?-6:1));d.setHours(0,0,0,0);return d}
-function fmtShort(ds){const d=new Date(ds+'T00:00:00');return`${DAG[d.getDay()]} ${d.getDate()} ${MND[d.getMonth()]}`}
-function daysUntil(ds){const t=new Date();t.setHours(0,0,0,0);return Math.round((new Date(ds)-t)/86400000)}
+function fmtShort(ds){const p=ds.split('-');const d=new Date(p[0],p[1]-1,p[2]);return`${DAG[d.getDay()]} ${d.getDate()} ${MND[d.getMonth()]}`}
+function daysUntil(ds){const t=new Date();t.setHours(0,0,0,0);const p=ds.split('-');const d=new Date(p[0],p[1]-1,p[2]);return Math.round((d-t)/86400000)}
 function urgency(ds){const d=daysUntil(ds);if(d<0)return'past';if(d<=2)return'urgent';if(d<=7)return'soon';return'ok'}
 function urgencyLabel(ds){const d=daysUntil(ds);if(d<0)return'Verlopen';if(d===0)return'Vandaag!';if(d===1)return'Morgen';return`nog ${d}d`}
 
