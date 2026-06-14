@@ -1,5 +1,5 @@
-const CACHE = 'lars-planner-v1';
-const ASSETS = ['/lars-planner/', '/lars-planner/index.html', '/lars-planner/manifest.json'];
+const CACHE = 'lars-planner-v5';
+const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -14,9 +14,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for API calls, cache first for assets
-  if (e.request.url.includes('supabase') || e.request.url.includes('anthropic') || e.request.url.includes('fonts')) {
-    return; // always network for these
+  if (e.request.url.includes('supabase') || e.request.url.includes('anthropic') || e.request.url.includes('fonts') || e.request.url.includes('jsdelivr')) {
+    return;
   }
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {
