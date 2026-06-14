@@ -463,8 +463,8 @@ function renderWeek(){
         const tot=totalForToets(t);
         return`<div class="task-item ${u}">
           <div class="task-info">
-            <div class="task-name${sv.done?' done':''}">${t.naam}</div>
-            <div class="task-meta">${v?.naam||''} · ⏱ ${sv.tijd_min} min<br>${sv.inhoud}</div>
+            <div class="task-name${sv.done?' done':''}">${sv.inhoud}</div>
+            <div class="task-meta">${t.naam} · ${v?.naam||''} · ⏱ ${sv.tijd_min} min</div>
           </div>
           <span class="badge">${idx}/${tot}</span>
           <div class="check${sv.done?' done':''}" onclick="toggleSessie('${sv.id}',${!sv.done})">✓</div>
