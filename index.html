@@ -815,9 +815,9 @@ async function saveTaak(){
   document.getElementById('save-btn').disabled=true;
   document.getElementById('save-btn').textContent='Opslaan…';
   try{
-    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum});
+    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum:datum+'T12:00:00'});
     const toets=toetsRes[0];
-    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
+    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum+'T12:00:00',inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
     const sessieRes=await DB.addSessies(sessieData);
     toetsen.push(toets);
     sessies.push(...sessieRes);
