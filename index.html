@@ -183,6 +183,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .begrip-btn.twijfel{border-color:#f0a05a;background:rgba(240,160,90,.1)}
 .begrip-btn.hulp{border-color:#e05b5b;background:rgba(224,91,91,.1)}
 .begrip-icon{font-size:22px}
+/* STATS */
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.stat-vak-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.stat-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-name{font-size:14px;font-weight:600}
+.stat-pct{font-size:22px;font-weight:600;margin-left:auto}
+.stat-bars{display:flex;flex-direction:column;gap:5px}
+.stat-bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.stat-bar-label{width:70px;color:var(--muted);flex-shrink:0}
+.stat-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:7px}
+.stat-bar-fill{height:7px;border-radius:4px;transition:width .6s}
+.stat-bar-val{width:30px;text-align:right;color:var(--muted);flex-shrink:0}
+.stat-toetsen{margin-top:10px;display:flex;flex-direction:column;gap:4px}
+.stat-toets-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--border);font-size:12px}
+.stat-toets-naam{flex:1;font-weight:500}
+.stat-toets-dl{font-family:'DM Mono',monospace;font-size:10px;padding:1px 6px;border-radius:4px}
+/* ARCHIVE */
+.archive-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:12px;cursor:pointer;background:transparent;width:100%;font-family:inherit;margin-top:6px}
+.archive-btn:hover{border-color:var(--warn);color:var(--warn)}
+/* REPLAN */
+.replan-btn{padding:6px 11px;border-radius:7px;border:1px solid var(--accent);background:rgba(124,111,247,.1);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+/* VERLOPEN BADGE */
+.verlopen-banner{background:rgba(240,160,90,.08);border:1px solid var(--warn);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.verlopen-text{font-size:12px;color:var(--warn)}
+.verlopen-count{font-size:18px;font-weight:600;color:var(--warn)}
 /* DELETE BTN */
 .del-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 4px;flex-shrink:0}
 .del-btn:hover{color:var(--danger)}
@@ -201,6 +226,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="tabs">
     <button class="tab on" onclick="switchTab('week')">📅 Week</button>
     <button class="tab" onclick="switchTab('vakken')">📚 Vakken</button>
+    <button class="tab" onclick="switchTab('stats')">📊 Voortgang</button>
   </div>
 </div>
 
@@ -219,8 +245,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="stitle">Mijn vakken</div>
     <div class="vak-cards" id="vak-cards"></div>
     <div style="margin-top:10px">
+      <div id="verlopen-banner"></div>
       <button class="add-btn" onclick="openVakModal()">+ Nieuw vak toevoegen</button>
     </div>
+  </div>
+  <div class="view" id="view-stats">
+    <div class="stitle">Voortgang per vak</div>
+    <div id="stats-content"></div>
   </div>
 </div>
 
@@ -433,11 +464,12 @@ async function init(){
 let currentTab='week';
 function switchTab(t){
   currentTab=t;
-  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',['week','vakken'][i]===t));
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',['week','vakken','stats'][i]===t));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('view-'+t).classList.add('on');
   if(t==='vakken')renderVakken();
   if(t==='week')renderWeek();
+  if(t==='stats')renderStats();
 }
 
 // ══ WEEK VIEW ══
@@ -551,6 +583,7 @@ function renderVakken(){
   const c=document.getElementById('vak-cards');
   c.innerHTML='';
   fillVakSelect();
+  setTimeout(checkVerlopenToetsen,100);
   if(!vakken.length){c.innerHTML=`<div class="empty"><div class="ei">📚</div><div class="et">Geen vakken</div><div class="es">Voeg je eerste vak toe</div></div>`;return;}
   vakken.forEach(vak=>{
     const vToetsen=toetsen.filter(t=>t.vak_id===vak.id);
@@ -575,10 +608,15 @@ function renderVakken(){
           const u=urgency(normDate(t.datum));
           const tSess=sessies.filter(s=>s.toets_id===t.id);
           const tDone=tSess.filter(s=>s.done).length;
-          return`<div class="toets-card">
+          const missedSessions=tSess.filter(s=>!s.done&&daysUntil(normDate(s.datum))<0).length;
+          const isVerlopen=daysUntil(normDate(t.datum))<0;
+          return`<div class="toets-card" style="${isVerlopen?'opacity:.6':''}">
             <div style="display:flex;align-items:flex-start;justify-content:space-between">
               <div class="toets-title">${t.naam}</div>
-              <button class="del-btn" onclick="deleteToets('${t.id}')" title="Verwijderen">🗑</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                ${missedSessions>0?`<button class="replan-btn" onclick="replanToets('${t.id}')">🔄 Herplan</button>`:''}
+                <button class="del-btn" onclick="deleteToets('${t.id}')" title="Verwijderen">🗑</button>
+              </div>
             </div>
             <div class="toets-meta">📅 ${fmtShort(normDate(t.datum))} · ${tDone}/${tSess.length} sessies</div>
             <span class="dl-badge ${u}">${urgencyLabel(normDate(t.datum))}</span>
@@ -907,6 +945,170 @@ async function saveVak(){
     toast('Vak toegevoegd!');
     document.getElementById('vak-naam').value='';
     document.getElementById('vak-emoji').value='';
+  }catch(e){toast('Fout: '+e.message);}
+}
+
+// ══ STATS ══
+function renderStats(){
+  const c=document.getElementById('stats-content');
+  if(!vakken.length){c.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Geen vakken</div>';return;}
+  let html='';
+  vakken.forEach(vak=>{
+    const vToetsen=toetsen.filter(t=>t.vak_id===vak.id);
+    if(!vToetsen.length)return;
+    const vSessies=sessies.filter(s=>vToetsen.some(t=>t.id===s.toets_id));
+    const total=vSessies.length;
+    if(!total)return;
+    const done=vSessies.filter(s=>s.done).length;
+    const goed=vSessies.filter(s=>s.begrip==='goed').length;
+    const twijfel=vSessies.filter(s=>s.begrip==='twijfel').length;
+    const hulp=vSessies.filter(s=>s.begrip==='hulp').length;
+    const pct=Math.round(done/total*100);
+    html+=`<div class="stat-card">
+      <div class="stat-vak-hdr">
+        <div class="stat-icon" style="background:${vak.kleur}22;color:${vak.kleur}">${vak.emoji}</div>
+        <div class="stat-name">${vak.naam}</div>
+        <div class="stat-pct" style="color:${vak.kleur}">${pct}%</div>
+      </div>
+      <div class="stat-bars">
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">Voltooid</div>
+          <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${pct}%;background:${vak.kleur}"></div></div>
+          <div class="stat-bar-val">${done}/${total}</div>
+        </div>
+        ${done>0?`
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">😊 Goed</div>
+          <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${Math.round(goed/done*100)}%;background:var(--accent2)"></div></div>
+          <div class="stat-bar-val">${goed}</div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">😐 Twijfel</div>
+          <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${Math.round(twijfel/done*100)}%;background:var(--warn)"></div></div>
+          <div class="stat-bar-val">${twijfel}</div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar-label">😕 Hulp</div>
+          <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${Math.round(hulp/done*100)}%;background:var(--danger)"></div></div>
+          <div class="stat-bar-val">${hulp}</div>
+        </div>`:''}
+      </div>
+      <div class="stat-toetsen">
+        ${vToetsen.map(t=>{
+          const u=urgency(normDate(t.datum));
+          const tS=sessies.filter(s=>s.toets_id===t.id);
+          const tD=tS.filter(s=>s.done).length;
+          const tHulp=tS.some(s=>s.begrip==='hulp');
+          const tTwijfel=tS.some(s=>s.begrip==='twijfel');
+          const statusDot=tHulp?'🔴':tTwijfel?'🟡':'🟢';
+          return`<div class="stat-toets-row">
+            <span>${statusDot}</span>
+            <span class="stat-toets-naam">${t.naam}</span>
+            <span class="stat-toets-dl deadline ${u}">${urgencyLabel(normDate(t.datum))}</span>
+            <span style="font-size:11px;color:var(--muted)">${tD}/${tS.length}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  if(!html)html='<div style="text-align:center;padding:40px;color:var(--muted)">Nog geen sessies gedaan</div>';
+  c.innerHTML=html;
+}
+
+// ══ REPLAN ══
+async function replanToets(toetsId){
+  const t=toetsen.find(x=>x.id===toetsId);
+  if(!t)return;
+  const vak=vakken.find(v=>v.id===t.vak_id);
+  const remaining=sessies.filter(s=>s.toets_id===toetsId&&!s.done);
+  if(!remaining.length){toast('Alle sessies al gedaan!');return;}
+  if(!confirm(`${remaining.length} resterende sessies herplannen voor "${t.naam}"?`))return;
+
+  // Get content description from remaining sessions
+  const contentDesc=remaining.map(s=>s.inhoud).join(', ');
+  const daysLeft=daysUntil(normDate(t.datum));
+  if(daysLeft<0){toast('Toets is al verlopen');return;}
+
+  setLoading('Herplannen…');
+  document.getElementById('modal-overlay').style.display='flex';
+  document.getElementById('plan-box').classList.remove('on');
+  document.getElementById('save-btn').style.display='none';
+
+  try{
+    const raw=await claudeAPI([{role:'user',content:`Je bent een slimme leercoach. Herplan de resterende leerstof.
+
+RESTERENDE LEERSTOF:
+${contentDesc}
+
+DETAILS:
+- Vak: ${vak?.naam||''}
+- Toets: "${t.naam}"  
+- Toetsdatum: ${t.datum} (over ${daysLeft} dagen, vandaag ${today()})
+
+Maak een realistische herplanning voor de resterende stof.
+Regels: max 15-20 woorden per sessie, sessies 15-45 min, dag voor toets herhaling, niet op toetsdag.
+
+Geef ALLEEN dit JSON object, geen markdown:
+{"sessies":[{"datum":"YYYY-MM-DD","inhoud":"Wat te leren","tijd_min":25}],"tip":"Tip"}`}]);
+
+    clearLoading();
+    const parsed=parseJSON(raw);
+    if(!parsed?.sessies?.length){showError('Herplannen mislukt');return;}
+
+    // Delete old undone sessions
+    for(const s of remaining){
+      await sb('DELETE',`lp_sessies?id=eq.${s.id}`);
+      sessies=sessies.filter(x=>x.id!==s.id);
+    }
+
+    // Save new sessions
+    const newSessieData=parsed.sessies.filter(s=>s.datum<t.datum).map(s=>({
+      toets_id:toetsId,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false
+    }));
+    const newSessies=await DB.addSessies(newSessieData);
+    sessies.push(...newSessies);
+
+    closeModal();
+    renderWeek();
+    renderVakken();
+    toast(`🔄 ${newSessies.length} sessies herplant!`);
+  }catch(e){
+    clearLoading();
+    showError('Fout: '+e.message);
+  }
+}
+
+// ══ VERLOPEN TOETSEN ══
+function checkVerlopenToetsen(){
+  const verlopen=toetsen.filter(t=>daysUntil(normDate(t.datum))<-1);
+  const banner=document.getElementById('verlopen-banner');
+  if(!banner||!verlopen.length)return;
+  banner.innerHTML=`<div class="verlopen-banner">
+    <div>
+      <div class="verlopen-text">Verlopen toetsen</div>
+      <div style="font-size:12px;color:var(--muted)">${verlopen.map(t=>t.naam).join(', ')}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="verlopen-count">${verlopen.length}</div>
+      <button class="archive-btn" style="width:auto;margin:0;padding:7px 12px;border-color:var(--warn);color:var(--warn)" onclick="archiveVerlopen()">Archiveer</button>
+    </div>
+  </div>`;
+}
+
+async function archiveVerlopen(){
+  const verlopen=toetsen.filter(t=>daysUntil(normDate(t.datum))<-1);
+  if(!verlopen.length)return;
+  if(!confirm(`${verlopen.length} verlopen toets${verlopen.length>1?'en':''} verwijderen?`))return;
+  try{
+    for(const t of verlopen){
+      await DB.deleteSessies(t.id);
+      await DB.deleteToets(t.id);
+      toetsen=toetsen.filter(x=>x.id!==t.id);
+      sessies=sessies.filter(s=>s.toets_id!==t.id);
+    }
+    renderVakken();
+    renderWeek();
+    toast(`🗑 ${verlopen.length} verlopen toets${verlopen.length>1?'en':''} verwijderd`);
   }catch(e){toast('Fout: '+e.message);}
 }
 
