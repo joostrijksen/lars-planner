@@ -1409,7 +1409,7 @@ function toast(msg){
 // ══ SERVICE WORKER ══
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () =>
-    navigator.serviceWorker.register("/lars-planner/sw.js").catch(() => {})
+    navigator.serviceWorker.register("/sw.js").catch(() => {})
   );
 }
 
