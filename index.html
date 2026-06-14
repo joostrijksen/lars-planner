@@ -443,7 +443,7 @@ function renderWeek(){
     let pillsHtml=items.length===0?`<span class="dempty">Vrij 🎉</span>`:
       items.map(it=>{
         if(it.type==='exam')return`<span class="pill exam">🎯 ${it.toets.naam}</span>`;
-        const u=urgency(it.toets.datum);
+        const u=urgency(normDate(it.toets.datum));
         const v=vakken.find(x=>x.id===it.toets.vak_id);
         return`<span class="pill ${u}">${v?.emoji||''} ${v?.naam||''}</span>`;
       }).join('');
@@ -458,7 +458,7 @@ function renderWeek(){
         }
         const{toets:t,sessie:sv}=it;
         const v=vakken.find(x=>x.id===t.vak_id);
-        const u=urgency(t.datum);
+        const u=urgency(normDate(t.datum));
         const idx=idxForSessie(t,sv)+1;
         const tot=totalForToets(t);
         return`<div class="task-item ${u}">
@@ -515,7 +515,7 @@ function renderVakken(){
     <div class="vak-body">
       ${vToetsen.length===0?'<div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Geen toetsen</div>':
         vToetsen.map(t=>{
-          const u=urgency(t.datum);
+          const u=urgency(normDate(t.datum));
           const tSess=sessies.filter(s=>s.toets_id===t.id);
           const tDone=tSess.filter(s=>s.done).length;
           return`<div class="toets-card">
@@ -523,9 +523,9 @@ function renderVakken(){
               <div class="toets-title">${t.naam}</div>
               <button class="del-btn" onclick="deleteToets('${t.id}')" title="Verwijderen">🗑</button>
             </div>
-            <div class="toets-meta">📅 ${fmtShort(t.datum)} · ${tDone}/${tSess.length} sessies</div>
-            <span class="dl-badge ${u}">${urgencyLabel(t.datum)}</span>
-            ${tSess.length?`<div class="sess-list">${tSess.slice(0,4).map((s,i)=>`<div class="sess-row${s.done?' done':''}"><span class="snum">S${i+1}</span><span class="sdate">${fmtShort(s.datum)}</span><span style="flex:1">${s.inhoud}</span></div>`).join('')}${tSess.length>4?`<div style="font-size:11px;color:var(--muted);padding:3px 0">+${tSess.length-4} meer…</div>`:''}</div>`:''}
+            <div class="toets-meta">📅 ${fmtShort(normDate(t.datum))} · ${tDone}/${tSess.length} sessies</div>
+            <span class="dl-badge ${u}">${urgencyLabel(normDate(t.datum))}</span>
+            ${tSess.length?`<div class="sess-list">${tSess.slice(0,4).map((s,i)=>`<div class="sess-row${s.done?' done':''}"><span class="snum">S${i+1}</span><span class="sdate">${fmtShort(normDate(s.datum))}</span><span style="flex:1">${s.inhoud}</span></div>`).join('')}${tSess.length>4?`<div style="font-size:11px;color:var(--muted);padding:3px 0">+${tSess.length-4} meer…</div>`:''}</div>`:''}
           </div>`;
         }).join('')
       }
@@ -760,7 +760,7 @@ async function analyzeManual(){
 async function callPlanningAI(desc){
   setLoading('Slimme planning maken…');
   const datum=document.getElementById('f-datum').value;
-  const daysLeft=daysUntil(datum);
+  const daysLeft=daysUntil(normDate(datum));
   const naam=document.getElementById('f-naam').value||`Toets ${getVakNaam()}`;
   try{
     const raw=await claudeAPI([{role:'user',content:`Je bent een slimme leercoach voor een scholier op de middelbare school.
@@ -796,7 +796,7 @@ Geef ALLEEN dit JSON object terug, geen markdown:
     if(!parsed.sessies.length){showError('Geen sessies voor de toetsdatum. Kies een latere toetsdatum.');return;}
     pendingPlan=parsed;
     // render plan preview
-    document.getElementById('plan-sessions').innerHTML=parsed.sessies.map((s,i)=>`<div class="plan-sess"><div class="psnum">S${i+1}</div><div><div class="psdate">${fmtShort(s.datum)}</div><div class="pscontent">${s.inhoud}</div><div class="pstime">⏱ ${s.tijd_min} min</div></div></div>`).join('');
+    document.getElementById('plan-sessions').innerHTML=parsed.sessies.map((s,i)=>`<div class="plan-sess"><div class="psnum">S${i+1}</div><div><div class="psdate">${fmtShort(normDate(s.datum))}</div><div class="pscontent">${s.inhoud}</div><div class="pstime">⏱ ${s.tijd_min} min</div></div></div>`).join('');
     const totMin=parsed.sessies.reduce((a,s)=>a+s.tijd_min,0);
     document.getElementById('plan-sum').innerHTML=`📊 ${parsed.sessies.length} sessies · ${Math.round(totMin/60*10)/10} uur totaal<br>${parsed.tip?`<em>💡 ${parsed.tip}</em>`:''}`;
     document.getElementById('plan-box').classList.add('on');
@@ -815,9 +815,9 @@ async function saveTaak(){
   document.getElementById('save-btn').disabled=true;
   document.getElementById('save-btn').textContent='Opslaan…';
   try{
-    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum:datum+'T12:00:00'});
+    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum:datum});
     const toets=toetsRes[0];
-    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum+'T12:00:00',inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
+    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
     const sessieRes=await DB.addSessies(sessieData);
     toetsen.push(toets);
     sessies.push(...sessieRes);
