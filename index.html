@@ -975,19 +975,24 @@ Geef ALLEEN dit JSON object terug, geen markdown:
 
 // ══ SAVE TOETS ══
 async function saveTaak(){
-  if(!pendingPlan)return;
+  if(!pendingPlan){toast('Genereer eerst een planning');return;}
   const vakId=document.getElementById('f-vak').value;
   const naam=document.getElementById('f-naam').value.trim()||`Toets ${getVakNaam()}`;
   const datum=document.getElementById('f-datum').value;
   if(!vakId){toast('Kies een vak');return;}
   if(!datum){toast('Kies een datum');return;}
-  document.getElementById('save-btn').disabled=true;
-  document.getElementById('save-btn').textContent='Opslaan…';
+  if(!pendingPlan.sessies?.length){toast('Geen sessies in planning');return;}
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true;
+  btn.textContent='Opslaan…';
   try{
-    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum,begeleider:document.getElementById('f-begeleider').value});
+    const begeleider=document.getElementById('f-begeleider')?.value||'beiden';
+    const toetsRes=await DB.addToets({vak_id:vakId,naam,datum,begeleider});
+    if(!toetsRes||!toetsRes[0]){throw new Error('Toets aanmaken mislukt — geen response van Supabase');}
     const toets=toetsRes[0];
     const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
     const sessieRes=await DB.addSessies(sessieData);
+    if(!sessieRes){throw new Error('Sessies opslaan mislukt');}
     toetsen.push(toets);
     sessies.push(...sessieRes);
     setSyncStatus('ok','gesynchroniseerd');
@@ -996,9 +1001,11 @@ async function saveTaak(){
     if(currentTab==='vakken')renderVakken();
     toast(`✅ ${sessieRes.length} leersessies ingepland!`);
   }catch(e){
-    toast('Opslaan mislukt: '+e.message);
-    document.getElementById('save-btn').disabled=false;
-    document.getElementById('save-btn').textContent='Opslaan ✓';
+    console.error('saveTaak error:', e);
+    showError('Opslaan mislukt: '+e.message);
+    const btn=document.getElementById('save-btn');
+    btn.disabled=false;
+    btn.textContent='Opslaan ✓';
   }
 }
 
