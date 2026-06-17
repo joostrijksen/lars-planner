@@ -1008,8 +1008,8 @@ async function saveTaak(){
     sessies.push(...sessieRes);
     setSyncStatus('ok','gesynchroniseerd');
     closeModal();
-    renderWeek();
-    if(currentTab==='vakken')renderVakken();
+    try{ renderWeek(); } catch(re){ console.error('renderWeek fout:', re); }
+    try{ if(currentTab==='vakken') renderVakken(); } catch(re){ console.error('renderVakken fout:', re); }
     toast(`✅ ${sessieRes.length} leersessies ingepland!`);
   }catch(e){
     console.error('saveTaak error:', e);
