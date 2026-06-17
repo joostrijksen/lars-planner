@@ -333,7 +333,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <!-- TOC MODE -->
   <div id="mode-toc">
     <div class="pzone" id="toc-zone">
-      <input type="file" accept="image/*" capture="environment" onchange="handleTocPhoto(event)">
+      <input type="file" accept="image/*,application/pdf" onchange="handleTocPhoto(event)">
       <img id="toc-thumb" alt="">
       <div class="pi">📷</div>
       <div class="pl">Foto van inhoudsopgave</div>
@@ -428,7 +428,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Maak foto's van de leerstof die je wilt oefenen. De AI stelt dan gerichte vragen over jouw eigen stof.</div>
       <div id="oh-thumbs-wrap" class="oh-thumbs"></div>
       <div class="oh-foto-zone" id="oh-foto-zone">
-        <input type="file" accept="image/*" capture="environment" onchange="addOhFoto(event)">
+        <input type="file" accept="image/*,application/pdf" onchange="addOhFoto(event)">
         <div class="pi">📷</div>
         <div class="pl">Foto van leerstof</div>
         <div class="ps">Woordenlijst, aantekeningen, samenvatting…</div>
@@ -804,11 +804,11 @@ function addMatSlot(){
   const c=document.getElementById('mat-slots');
   const div=document.createElement('div');
   div.className='pzone';div.id=`mslot-${idx}`;
-  div.innerHTML=`<input type="file" accept="image/*" capture="environment" onchange="handleMatPhoto(event,${idx})">
+  div.innerHTML=`<input type="file" accept="image/*,application/pdf" onchange="handleMatPhoto(event,${idx})">
     <img id="mthumb-${idx}" alt="" style="display:none">
     <div class="pi">📷</div>
     <div class="pl">Foto ${idx+1} van leerstof</div>
-    <div class="ps">Woordenlijst, aantekeningen…</div>`;
+    <div class="ps">Foto, afbeelding of PDF</div>`;
   c.appendChild(div);
 }
 
@@ -990,9 +990,20 @@ async function saveTaak(){
     const toetsRes=await DB.addToets({vak_id:vakId,naam,datum,begeleider});
     if(!toetsRes||!toetsRes[0]){throw new Error('Toets aanmaken mislukt — geen response van Supabase');}
     const toets=toetsRes[0];
-    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min,done:false}));
-    const sessieRes=await DB.addSessies(sessieData);
-    if(!sessieRes){throw new Error('Sessies opslaan mislukt');}
+    const sessieData=pendingPlan.sessies.map(s=>({toets_id:toets.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min||25,done:false}));
+    let sessieRes;
+    try{
+      sessieRes=await DB.addSessies(sessieData);
+    } catch(bulkErr){
+      // Retry one by one if bulk fails
+      console.warn('Bulk insert failed, trying one by one:', bulkErr);
+      sessieRes=[];
+      for(const sd of sessieData){
+        const r=await DB.addSessies([sd]);
+        if(r) sessieRes.push(...r);
+      }
+    }
+    if(!sessieRes||!sessieRes.length){throw new Error('Sessies opslaan mislukt — controleer Supabase verbinding');}
     toetsen.push(toets);
     sessies.push(...sessieRes);
     setSyncStatus('ok','gesynchroniseerd');
