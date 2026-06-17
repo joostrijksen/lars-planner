@@ -281,8 +281,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="view" id="view-vakken">
     <div class="stitle">Mijn vakken</div>
     <div class="vak-cards" id="vak-cards"></div>
-    <div style="margin-top:10px">
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
       <div id="verlopen-banner"></div>
+      <button onclick="replanAlles()" style="width:100%;padding:13px;border-radius:11px;border:1.5px solid var(--accent);background:rgba(124,111,247,.12);color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">🔄 Herplan alles slim opnieuw</button>
       <button class="add-btn" onclick="openVakModal()">+ Nieuw vak toevoegen</button>
     </div>
   </div>
