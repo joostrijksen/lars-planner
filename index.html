@@ -1468,12 +1468,8 @@ Alle nog niet gedane sessies worden verwijderd en opnieuw ingepland, rekening ho
     for(const t of actief){
       const undone = sessies.filter(s => s.toets_id === t.id && !s.done);
       if(undone.length){
-        await DB.deleteSessies(t.id + '_undone');
-        // Delete one by one since we can't delete only undone via bulk
-        for(const s of undone){
-          await sb('DELETE', `lp_sessies?id=eq.${s.id}`);
-        }
-        sessies = sessies.filter(s => !(s.toets_id === t.id && !s.done));
+        await sb('DELETE',`lp_sessies?toets_id=eq.${t.id}&done=eq.false`);
+        sessies=sessies.filter(s=>!(s.toets_id===t.id&&!s.done));
       }
     }
 
