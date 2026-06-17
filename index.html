@@ -1441,61 +1441,35 @@ function updateOhProgress(){
 
 // ══ HERPLAN ALLES ══
 async function replanAlles(){
-  const actief = toetsen.filter(t => daysUntil(normDate(t.datum)) >= 0);
-  if(!actief.length){ toast('Geen actieve toetsen om te herplannen'); return; }
-  if(!confirm(`Alle ${actief.length} actieve toetsen herplannen?
+  const actief=toetsen.filter(t=>daysUntil(normDate(t.datum))>=0);
+  if(!actief.length){toast('Geen actieve toetsen');return;}
+  if(!confirm(`${actief.length} toetsen herplannen? Alle nog niet gedane sessies worden verwijderd en slim opnieuw ingepland.`))return;
 
-Alle nog niet gedane sessies worden verwijderd en opnieuw ingepland, rekening houdend met elkaar.`)) return;
-
-  // Show loading overlay
-  const overlay = document.createElement('div');
-  overlay.id = 'replan-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
-  overlay.innerHTML = `
-    <div class="spin" style="width:36px;height:36px;border-width:3px"></div>
-    <div style="color:#fff;font-size:15px;font-weight:600" id="replan-status">Herplannen…</div>
-    <div style="color:var(--muted);font-size:13px" id="replan-sub">0 / ${actief.length} toetsen</div>`;
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px';
+  overlay.innerHTML=`<div class="spin" style="width:36px;height:36px;border-width:3px"></div><div style="color:#fff;font-size:15px;font-weight:600" id="rp-status">Voorbereiden…</div><div style="color:var(--muted);font-size:13px;text-align:center" id="rp-sub"></div>`;
   document.body.appendChild(overlay);
 
-  const setStatus = (msg, sub) => {
-    document.getElementById('replan-status').textContent = msg;
-    if(sub) document.getElementById('replan-sub').textContent = sub;
-  };
-
-  try {
-    // Step 1: Delete all undone sessions for active toetsen
-    setStatus('Oude sessies verwijderen…');
+  try{
+    document.getElementById('rp-status').textContent='Oude sessies verwijderen…';
     for(const t of actief){
-      const undone = sessies.filter(s => s.toets_id === t.id && !s.done);
-      if(undone.length){
-        await sb('DELETE',`lp_sessies?toets_id=eq.${t.id}&done=eq.false`);
-        sessies=sessies.filter(s=>!(s.toets_id===t.id&&!s.done));
-      }
+      await sb('DELETE',`lp_sessies?toets_id=eq.${t.id}&done=eq.false`);
+      sessies=sessies.filter(s=>!(s.toets_id===t.id&&!s.done));
     }
 
-    // Step 2: Sort toetsen by exam date (soonest first)
-    const sorted = [...actief].sort((a,b) => a.datum.localeCompare(b.datum));
+    const sorted=[...actief].sort((a,b)=>a.datum.localeCompare(b.datum));
+    for(let i=0;i<sorted.length;i++){
+      const t=sorted[i];
+      document.getElementById('rp-status').textContent=`Toets ${i+1}/${sorted.length} inplannen…`;
+      document.getElementById('rp-sub').textContent=t.naam;
+      const vak=vakken.find(v=>v.id===t.vak_id);
+      const daysLeft=daysUntil(normDate(t.datum));
+      if(daysLeft<0)continue;
 
-    // Step 3: Replan each toets one by one, passing updated bezette dagen each time
-    let herplant = 0;
-    for(const t of sorted){
-      herplant++;
-      setStatus(`Toets ${herplant}/${sorted.length} inplannen…`, t.naam);
-      const vak = vakken.find(v => v.id === t.vak_id);
-      const daysLeft = daysUntil(normDate(t.datum));
-      if(daysLeft < 0) continue;
-
-      // Get remaining content from done sessions or use toets naam
-      const doneSess = sessies.filter(s => s.toets_id === t.id && s.done);
-      const allOrigContent = doneSess.map(s => s.inhoud).join('; ');
-      const contentDesc = allOrigContent
-        ? `Reeds geleerd: ${allOrigContent}. Maak een herhaling en resterende planning.`
-        : `Toets "${t.naam}" voor het vak ${vak?.naam||''}. Maak een volledige leerplanning.`;
-
-      const prompt = `Je bent een slimme leercoach voor een scholier op de middelbare school.
+      const prompt=`Je bent een slimme leercoach voor een scholier op de middelbare school.
 
 LEERSTOF:
-${contentDesc}
+Toets "${t.naam}" voor het vak ${vak?.naam||''}.
 
 DETAILS:
 - Vak: ${vak?.naam||''}
@@ -1519,39 +1493,29 @@ PLANNING REGELS:
 Geef ALLEEN dit JSON object, geen markdown:
 {"sessies":[{"datum":"YYYY-MM-DD","inhoud":"Wat te leren","tijd_min":25}],"tip":""}`;
 
-      try {
-        const raw = await claudeAPI([{role:'user', content: prompt}], 800);
-        const parsed = parseJSON(raw);
-        if(!parsed?.sessies?.length) continue;
-
-        const newSessieData = parsed.sessies
-          .filter(s => normDate(s.datum) < normDate(t.datum))
-          .map(s => ({toets_id: t.id, datum: s.datum, inhoud: s.inhoud, tijd_min: s.tijd_min||25, done: false}));
-
-        if(newSessieData.length){
-          const newSessies = await DB.addSessies(newSessieData);
-          if(newSessies) sessies.push(...newSessies);
+      try{
+        const raw=await claudeAPI([{role:'user',content:prompt}],800);
+        const parsed=parseJSON(raw);
+        if(!parsed?.sessies?.length)continue;
+        const newData=parsed.sessies.filter(s=>normDate(s.datum)<normDate(t.datum)).map(s=>({toets_id:t.id,datum:s.datum,inhoud:s.inhoud,tijd_min:s.tijd_min||25,done:false}));
+        if(newData.length){
+          const newSess=await DB.addSessies(newData);
+          if(newSess)sessies.push(...newSess);
         }
-      } catch(e) {
-        console.warn('Replan fout voor', t.naam, e);
-      }
-
-      // Small delay to avoid rate limiting
-      await new Promise(r => setTimeout(r, 500));
+      }catch(e){console.warn('Replan fout:',t.naam,e);}
+      await new Promise(r=>setTimeout(r,600));
     }
 
     overlay.remove();
     renderWeek();
     renderVakken();
-    toast(`🔄 ${herplant} toetsen herplant!`);
-
-  } catch(e) {
+    toast(`🔄 ${sorted.length} toetsen slim herplant!`);
+  }catch(e){
     overlay.remove();
-    toast('Fout bij herplannen: ' + e.message);
+    toast('Fout: '+e.message);
     console.error(e);
   }
 }
-
 // ══ TOAST ══
 let toastTimer;
 function toast(msg){
