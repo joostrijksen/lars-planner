@@ -275,6 +275,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button onclick="changeWeek(1)">›</button>
       </div>
       <div class="wlabel" id="week-label"></div>
+      <button onclick="replanAlles()" style="padding:6px 11px;border-radius:8px;border:1px solid var(--accent);background:rgba(124,111,247,.1);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">🔄 Herplan alles</button>
     </div>
     <div class="day-cards" id="day-cards"></div>
   </div>
@@ -925,6 +926,22 @@ async function analyzeManual(){
   await callPlanningAI(`De leerling beschrijft de leerstof als:\n${text}`);
 }
 
+// ══ BEZETTE DAGEN ══
+function getBezetteDagen(){
+  // Build a map of date -> session count from existing sessions
+  const counts = {};
+  sessies.forEach(s => {
+    const d = normDate(s.datum);
+    if(d >= today()) counts[d] = (counts[d]||0) + 1;
+  });
+  if(!Object.keys(counts).length) return 'Nog geen sessies ingepland.';
+  return Object.entries(counts)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .slice(0, 30)
+    .map(([d,n]) => `${d}: ${n} sessie${n>1?'s':''}`)
+    .join(', ');
+}
+
 // ══ PLANNING AI ══
 async function callPlanningAI(desc){
   setLoading('Slimme planning maken…');
@@ -942,16 +959,22 @@ DETAILS:
 - Toets: "${naam}"
 - Toetsdatum: ${datum} (over ${daysLeft} dagen, vandaag ${today()})
 
+BESTAANDE PLANNING (al ingeplande sessies per dag):
+${getBezetteDagen()}
+
 PLANNING REGELS:
 - Verspreid leerstof REALISTISCH, nooit alles in één sessie
 - Woordenlijsten: max 15-20 woorden per sessie
-- Begrippen: max 8-10 per sessie  
+- Begrippen: max 8-10 per sessie
 - Formules: max 5-6 per sessie
 - Sessieduur: 15-45 minuten
 - Dag vóór toets: altijd een korte herhaling (15-20 min)
 - Op toetsdag zelf GEEN sessie plannen
 - NOOIT een sessie plannen NA de toetsdatum
+- MAX 2 sessies per dag totaal (over alle vakken samen)
+- Kies bij voorkeur dagen met 0 of 1 bestaande sessie
 - Max 1 sessie per dag in het weekend
+- Begin niet eerder dan 12 dagen voor de toets als er nog >12 dagen zijn
 - Bij 1-2 dagen: compact maar haalbaar
 - Bij >7 dagen: verspreid goed, bouw herhaling in
 
@@ -1414,6 +1437,123 @@ function updateOhProgress(){
   const pct = Math.round((ohState.vraagNr-1)/ohState.maxVragen*100);
   document.getElementById('oh-progress').textContent = `${ohState.vraagNr}/${ohState.maxVragen}`;
   document.getElementById('oh-prog-fill').style.width = pct+'%';
+}
+
+// ══ HERPLAN ALLES ══
+async function replanAlles(){
+  const actief = toetsen.filter(t => daysUntil(normDate(t.datum)) >= 0);
+  if(!actief.length){ toast('Geen actieve toetsen om te herplannen'); return; }
+  if(!confirm(`Alle ${actief.length} actieve toetsen herplannen?
+
+Alle nog niet gedane sessies worden verwijderd en opnieuw ingepland, rekening houdend met elkaar.`)) return;
+
+  // Show loading overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'replan-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+  overlay.innerHTML = `
+    <div class="spin" style="width:36px;height:36px;border-width:3px"></div>
+    <div style="color:#fff;font-size:15px;font-weight:600" id="replan-status">Herplannen…</div>
+    <div style="color:var(--muted);font-size:13px" id="replan-sub">0 / ${actief.length} toetsen</div>`;
+  document.body.appendChild(overlay);
+
+  const setStatus = (msg, sub) => {
+    document.getElementById('replan-status').textContent = msg;
+    if(sub) document.getElementById('replan-sub').textContent = sub;
+  };
+
+  try {
+    // Step 1: Delete all undone sessions for active toetsen
+    setStatus('Oude sessies verwijderen…');
+    for(const t of actief){
+      const undone = sessies.filter(s => s.toets_id === t.id && !s.done);
+      if(undone.length){
+        await DB.deleteSessies(t.id + '_undone');
+        // Delete one by one since we can't delete only undone via bulk
+        for(const s of undone){
+          await sb('DELETE', `lp_sessies?id=eq.${s.id}`);
+        }
+        sessies = sessies.filter(s => !(s.toets_id === t.id && !s.done));
+      }
+    }
+
+    // Step 2: Sort toetsen by exam date (soonest first)
+    const sorted = [...actief].sort((a,b) => a.datum.localeCompare(b.datum));
+
+    // Step 3: Replan each toets one by one, passing updated bezette dagen each time
+    let herplant = 0;
+    for(const t of sorted){
+      herplant++;
+      setStatus(`Toets ${herplant}/${sorted.length} inplannen…`, t.naam);
+      const vak = vakken.find(v => v.id === t.vak_id);
+      const daysLeft = daysUntil(normDate(t.datum));
+      if(daysLeft < 0) continue;
+
+      // Get remaining content from done sessions or use toets naam
+      const doneSess = sessies.filter(s => s.toets_id === t.id && s.done);
+      const allOrigContent = doneSess.map(s => s.inhoud).join('; ');
+      const contentDesc = allOrigContent
+        ? `Reeds geleerd: ${allOrigContent}. Maak een herhaling en resterende planning.`
+        : `Toets "${t.naam}" voor het vak ${vak?.naam||''}. Maak een volledige leerplanning.`;
+
+      const prompt = `Je bent een slimme leercoach voor een scholier op de middelbare school.
+
+LEERSTOF:
+${contentDesc}
+
+DETAILS:
+- Vak: ${vak?.naam||''}
+- Toets: "${t.naam}"
+- Toetsdatum: ${t.datum} (over ${daysLeft} dagen, vandaag ${today()})
+
+BESTAANDE PLANNING (al ingeplande sessies per dag):
+${getBezetteDagen()}
+
+PLANNING REGELS:
+- Verspreid leerstof REALISTISCH, nooit alles in één sessie
+- Sessieduur: 15-45 minuten
+- Dag vóór toets: altijd een korte herhaling (15-20 min)
+- Op toetsdag zelf GEEN sessie
+- NOOIT na toetsdatum
+- MAX 2 sessies per dag totaal over alle vakken
+- Kies dagen met 0 of 1 bestaande sessie
+- Max 1 sessie per dag in weekend
+- Begin niet eerder dan 12 dagen voor de toets
+
+Geef ALLEEN dit JSON object, geen markdown:
+{"sessies":[{"datum":"YYYY-MM-DD","inhoud":"Wat te leren","tijd_min":25}],"tip":""}`;
+
+      try {
+        const raw = await claudeAPI([{role:'user', content: prompt}], 800);
+        const parsed = parseJSON(raw);
+        if(!parsed?.sessies?.length) continue;
+
+        const newSessieData = parsed.sessies
+          .filter(s => normDate(s.datum) < normDate(t.datum))
+          .map(s => ({toets_id: t.id, datum: s.datum, inhoud: s.inhoud, tijd_min: s.tijd_min||25, done: false}));
+
+        if(newSessieData.length){
+          const newSessies = await DB.addSessies(newSessieData);
+          if(newSessies) sessies.push(...newSessies);
+        }
+      } catch(e) {
+        console.warn('Replan fout voor', t.naam, e);
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    overlay.remove();
+    renderWeek();
+    renderVakken();
+    toast(`🔄 ${herplant} toetsen herplant!`);
+
+  } catch(e) {
+    overlay.remove();
+    toast('Fout bij herplannen: ' + e.message);
+    console.error(e);
+  }
 }
 
 // ══ TOAST ══
